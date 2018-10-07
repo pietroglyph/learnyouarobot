@@ -1,0 +1,109 @@
+body {
+  font-family: sans-serif;
+  width: 100%;
+  height: 100vh;
+  margin: 0px;
+}
+
+/*
+  CSS for editor.html
+*/
+
+.hidden {
+  display: none;
+}
+
+/* Main view */
+button {
+  border: none;
+  color: white;
+}
+
+button:hover {
+  filter: brightness(80%);
+}
+
+button:active {
+  filter: brightness(70%);
+}
+
+.container {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  margin: 0px;
+  overflow: hidden;
+}
+
+#lessonPane {
+  width: 20%;
+  height: 100%;
+}
+
+.lessonPaneHeading {
+  display: flex;
+  justify-content: left;
+  align-items: center;
+  height: 5%;
+  margin: 0px;
+  margin-left: 5px;
+}
+
+.editorColumn {
+  display: flex;
+  flex-direction: column;
+  width: 80%;
+  height: 100%;
+}
+
+#editor {
+  height: 95%;
+  width: 100%;
+}
+
+.buttonRow {
+  display: flex;
+  flex-direction: row;
+  height: 5%;
+  width: 100%;
+}
+
+#switchRobotButton {
+  width: 20%;
+  height: 100%;
+  background-color: blue;
+}
+
+#toggleRunButton {
+  width: 80%;
+  height: 100%;
+}
+
+#toggleRunButton.start {
+  background-color: green;
+}
+
+#toggleRunButton.stop {
+  background-color: red;
+}
+
+#toggleRunButton.waiting {
+  background-color: lightgray;
+}
+
+/* Switcher popup */
+#switcherPopup {
+  position: fixed;
+  z-index: 100;
+  background-color: lightgray;
+  top: 0px;
+  left: 0px;
+  bottom: 0px;
+  right: 0px;
+}
+
+
+#deployTargets > td:hover {
+  background-color: darkgrey;
+}
