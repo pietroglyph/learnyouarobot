@@ -44,7 +44,7 @@ func (u *Users) GetUser(name string) (*User, error) {
 // Add adds a user with a specific name. There can be no duplicate named users.
 func (u *Users) Add(name string) (*User, error) {
 	_, err := u.GetUser(name)
-	if err != nil {
+	if err == nil {
 		return nil, fmt.Errorf("User %s already exists", name)
 	}
 
@@ -56,6 +56,7 @@ func (u *Users) Add(name string) (*User, error) {
 	user := &User{
 		Name:       name,
 		LastActive: time.Now(),
+		lessons:    NewLessons(),
 	}
 
 	dataDir := filepath.Join(config.UserDataDirectory, name)

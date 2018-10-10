@@ -11,10 +11,16 @@ import (
 func handleLogin(w http.ResponseWriter, r *http.Request) {
 	name := r.PostFormValue("name")
 	if name == "" {
-		http.Error(w, "Missing username", http.StatusBadRequest)
+		http.Error(w, "'username' form value cannot be missing or empty", http.StatusBadRequest)
 		return
 	}
-	users.Add(name)
+
+	_, err := users.Add(name)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	http.SetCookie(w, &http.Cookie{
 		Name:    loginCookieName,
 		Value:   name,

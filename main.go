@@ -49,7 +49,7 @@ func main() {
 	makeStockLessons()
 
 	http.Handle("/", indexSwitcher(http.FileServer(http.Dir(config.StaticDirectory))))
-	http.HandleFunc("/api/login", handleLogin)
+	http.HandleFunc("/api/user/login", handleLogin)
 	http.HandleFunc("/api/user/lessons", handleGetUserLessons)
 	http.HandleFunc("/api/lesson/get", handleGetLesson)
 	http.HandleFunc("/api/lesson/save", handleSaveLesson)
@@ -86,6 +86,7 @@ func makeStockLessons() {
 func indexSwitcher(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
+			h.ServeHTTP(w, r)
 			return
 		}
 
