@@ -13,7 +13,8 @@ import (
 type Lesson struct {
 	Name     string
 	Modified bool
-	Owner    *User
+	// Not included in JSON
+	Owner *User `json:"-"`
 
 	file *os.File
 }

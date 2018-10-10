@@ -47,6 +47,7 @@ func main() {
 	}
 
 	makeStockLessons()
+	loadUsers()
 
 	http.Handle("/", indexSwitcher(http.FileServer(http.Dir(config.StaticDirectory))))
 	http.HandleFunc("/api/user/login", handleLogin)
@@ -58,6 +59,24 @@ func main() {
 
 	log.Println("Listening on", config.Bind)
 	log.Panicln(http.ListenAndServe(config.Bind, nil))
+}
+
+func loadUsers() {
+	userDataDirs, err := ioutil.ReadDir(config.UserDataDirectory)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	for _, file := range userDataDirs {
+		if !file.IsDir() {
+			log.Println("Skipping non-directory file", file.Name(), "in user data directory.")
+			continue
+		}
+
+		users.Add(file.Name())
+	}
+
+	log.Println("Loaded", users.NumUsers(), "preexisting users.")
 }
 
 func makeStockLessons() {

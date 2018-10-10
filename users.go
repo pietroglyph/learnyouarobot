@@ -77,6 +77,13 @@ func (u *Users) Add(name string) (*User, error) {
 	return user, nil
 }
 
+// NumUsers returns the number of loaded users
+func (u *Users) NumUsers() int {
+	u.mux.RLock()
+	defer u.mux.RUnlock()
+	return len(u.array)
+}
+
 // Lessons gets all the user's Lessons -- modified or not
 func (u *User) Lessons() (Lessons, error) {
 	// Server must be restarted to read new lessons
