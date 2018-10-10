@@ -6,6 +6,7 @@
     <script src="monaco-editor/min/vs/loader.js"></script>
     <title>Learn You a Robot</title>
     <link rel="stylesheet" type="text/css" href="style.css">
+    <script src="editor.js"></script>
   </head>
   <body>
     <div class="container">
@@ -29,23 +30,5 @@
       <table id="deployTargets">
       </table>
     </div>
-
-    <script>
-        require.config({ paths: { "vs": "monaco-editor/min/vs" }});
-        require(["vs/editor/editor.main"], function() {
-            var editor = monaco.editor.create(document.getElementById("editor"), {
-                value: [
-                    "public class LearnYouARobot {",
-                    "\tpublic static void main(String[] args) {",
-                    "\t\tSystem.out.println(\"Welcome to Learn You a Robot! Select a lesson on the left to get started.\");",
-                    "\t}",
-                    "}"
-                ].join("\n"),
-                language: "java",
-                theme: "vs-dark"
-            });
-            window.onresize = () => editor.layout();
-        });
-    </script>
   </body>
 </html>
