@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -50,6 +51,22 @@ func (l Lesson) Reader() io.Reader {
 
 // SaveCode overwrites the lesson file contents with the code argument.
 func (l Lesson) SaveCode(code string) error {
+	if l.Owner == nil {
+		return fmt.Errorf("Cannot save code for a lesson with a nil User pointer")
+	}
+
+	if l.Modified == false {
+		newLessonFile, err := os.Create(filepath.Join(l.Owner.DataDirectory, l.Name+config.LessonFileSuffix))
+		if err != nil {
+			return err
+		}
+
+		io.Copy(newLessonFile, l.file)
+		l.file = newLessonFile
+		l.Modified = true
+	}
+
+	// We fully overwrite the file contents
 	err := l.file.Truncate(0)
 	if err != nil {
 		return err

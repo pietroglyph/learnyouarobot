@@ -46,6 +46,8 @@ func main() {
 		MaxUsers: config.MaxUsers,
 	}
 
+	makeStockLessons()
+
 	http.Handle("/", indexSwitcher(http.FileServer(http.Dir(config.StaticDirectory))))
 	http.HandleFunc("/api/login", handleLogin)
 	http.HandleFunc("/api/user/lessons", handleGetUserLessons)

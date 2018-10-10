@@ -54,9 +54,9 @@ func handleGetLesson(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lessonName := r.URL.Query().Get("name")
+	lessonName := r.URL.Query().Get("lesson")
 	if lessonName == "" {
-		http.Error(w, "'name' query parameter cannot be missing or empty", http.StatusBadRequest)
+		http.Error(w, "'lesson' query parameter cannot be missing or empty", http.StatusBadRequest)
 		return
 	}
 
@@ -70,7 +70,37 @@ func handleGetLesson(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleSaveLesson(w http.ResponseWriter, r *http.Request) {
+	user, err := GetCurrentUser(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
+	lessonName := r.PostFormValue("lesson")
+	if lessonName == "" {
+		http.Error(w, "'lesson' form value cannot be missing or empty", http.StatusBadRequest)
+		return
+	}
+
+	code := r.PostFormValue("code")
+	if code == "" {
+		http.Error(w, "'code' form value cannot be missing or empty", http.StatusBadRequest)
+		return
+	}
+
+	lessons, err := user.Lessons()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	lesson, ok := lessons[lessonName]
+	if !ok {
+		http.Error(w, "no lesson by the name '"+lessonName+"' exists", http.StatusBadRequest)
+		return
+	}
+
+	lesson.SaveCode(code)
 }
 
 func handleDeployLesson(w http.ResponseWriter, r *http.Request) {

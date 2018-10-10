@@ -13,8 +13,9 @@ import (
 
 // User is a struct that holds a user's name and last active time
 type User struct {
-	Name       string
-	LastActive time.Time
+	Name          string
+	LastActive    time.Time
+	DataDirectory string
 
 	lessons Lessons // Will be populated on first call to Lessons
 }
@@ -46,6 +47,7 @@ func (u *Users) Add(name string) (*User, error) {
 	if err != nil {
 		return nil, fmt.Errorf("User %s already exists", name)
 	}
+
 	u.mux.Lock()
 	defer u.mux.Unlock()
 	if len(u.array) > u.MaxUsers {
@@ -55,6 +57,15 @@ func (u *Users) Add(name string) (*User, error) {
 		Name:       name,
 		LastActive: time.Now(),
 	}
+
+	dataDir := filepath.Join(config.UserDataDirectory, name)
+	if _, err := os.Stat(dataDir); os.IsNotExist(err) {
+		if err = os.MkdirAll(dataDir, os.ModePerm); err != nil {
+			return nil, err
+		}
+	}
+	user.DataDirectory = dataDir
+
 	u.array = append(u.array, user)
 
 	// Make the user's data directory if it doesn't exist
@@ -73,6 +84,7 @@ func (u *User) Lessons() (Lessons, error) {
 	}
 
 	for k, v := range stockLessons {
+		v.Owner = u
 		u.lessons[k] = v
 	}
 
