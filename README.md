@@ -1,2 +1,2 @@
 # learnyouarobot
-A fully online interactive robotics programming lesson webapp
+An interactive robotics programming lesson webapp.
