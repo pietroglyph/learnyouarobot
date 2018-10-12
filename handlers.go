@@ -44,7 +44,7 @@ func handleGetUserLessons(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jsonData, err := json.Marshal(lessons)
+	jsonData, err := json.Marshal(lessons.Slice())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -72,7 +72,13 @@ func handleGetLesson(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	io.Copy(w, lessons[lessonName].Reader())
+	lesson, exists := lessons[lessonName]
+	if !exists {
+		http.Error(w, "Lesson "+lessonName+" doesn't exist", http.StatusBadRequest)
+		return
+	}
+
+	io.Copy(w, lesson.Reader())
 }
 
 func handleSaveLesson(w http.ResponseWriter, r *http.Request) {

@@ -50,6 +50,27 @@ button:active {
   margin-left: 5px;
 }
 
+#lessons {
+  margin: 0px;
+  padding: 0px;
+}
+
+.lesson {
+  list-style: none;
+  border-bottom: 1px solid grey;
+  padding-bottom: 10px;
+  padding-top: 10px;
+  padding-left: 15px;
+}
+
+.lesson:hover {
+  background-color: lightgray;
+}
+
+.lesson:active {
+  background-color: grey;
+}
+
 .editorColumn {
   display: flex;
   flex-direction: column;

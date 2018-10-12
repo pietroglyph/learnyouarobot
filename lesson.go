@@ -45,8 +45,21 @@ func NewLesson(fileName string, directory string) (Lesson, error) {
 	return lesson, nil
 }
 
+// Slice returns Lessons as []Lesson
+func (l Lessons) Slice() []Lesson {
+	s := make([]Lesson, len(l))
+
+	i := 0
+	for _, v := range l {
+		s[i] = v
+		i++
+	}
+	return s
+}
+
 // Reader returns a reader to read the contents of the lesson.
 func (l Lesson) Reader() io.Reader {
+	l.file.Seek(0, 0)
 	return l.file
 }
 
