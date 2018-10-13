@@ -69,11 +69,6 @@ func (u *Users) Add(name string) (*User, error) {
 
 	u.array = append(u.array, user)
 
-	// Make the user's data directory if it doesn't exist
-	path := filepath.Join(config.UserDataDirectory, user.Name)
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		os.MkdirAll(path, os.ModePerm)
-	}
 	return user, nil
 }
 

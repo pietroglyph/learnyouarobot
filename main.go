@@ -73,7 +73,10 @@ func loadUsers() {
 			continue
 		}
 
-		users.Add(file.Name())
+		_, err := users.Add(file.Name())
+		if err != nil {
+			log.Println("Couldn't load user from directory", file.Name()+".")
+		}
 	}
 
 	log.Println("Loaded", users.NumUsers(), "preexisting users.")

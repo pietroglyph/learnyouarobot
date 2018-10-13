@@ -63,12 +63,20 @@ button:active {
   padding-left: 15px;
 }
 
-.lesson:hover {
+.lesson:hover,.lesson.selected {
   background-color: lightgray;
 }
 
 .lesson:active {
   background-color: grey;
+}
+
+.lesson.unsaved {
+  font-weight: bold;
+}
+
+.lesson.unsaved::before {
+  content: "* "
 }
 
 .editorColumn {

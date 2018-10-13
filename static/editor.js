@@ -1,10 +1,16 @@
 'use strict';
 
-var api;
 const defaultOptions = {
   method: "GET",
   credentials: "same-origin"
 };
+const savingRate = 1500;
+
+var api;
+var needsToSave = false;
+var switchingTabs = false;
+var currentLessonName = null;
+var currentLessonElement = null;
 
 require.config({ paths: { "vs": "monaco-editor/min/vs" }});
 require(["vs/editor/editor.main"], function() {
@@ -30,8 +36,39 @@ require(["vs/editor/editor.main"], function() {
       api.getLessonCode(lessonName).then(code => editor.setValue(code)).catch(showErrorPopup);
     }
 
-    // Now that the editor's loaded we'll start dealing with the API and UI
+    function saveCode() {
+      if (!needsToSave || currentLessonName === null) return;
+
+      if (currentLessonElement !== null)
+        currentLessonElement.classList.remove("unsaved");
+
+      api.saveLessonCode(currentLessonName, editor.getValue()).catch(showErrorPopup);
+      needsToSave = false;
+    }
+
+    // Now that the editor is loaded we'll start dealing with the API and UI
     let lessonContainer = document.querySelector("#lessons");
+
+    window.addEventListener("keypress", (event) => {
+      if (event.ctrlKey && event.key === "s") {
+        saveCode();
+        event.preventDefault();
+      }
+    });
+    let saveTimer = window.setInterval(saveCode, savingRate);
+    editor.model.onDidChangeContent(() => {
+      if (currentLessonName !== null) {
+        needsToSave = true;
+
+        clearInterval(saveTimer);
+        saveTimer = window.setInterval(saveCode, savingRate);
+
+        if (switchingTabs)
+          switchingTabs = false;
+        else if (currentLessonElement !== null)
+          currentLessonElement.classList.add("unsaved");
+      }
+    });
 
     let baseURL = new URL(window.location.href);
     baseURL.pathname += "api/";
@@ -42,7 +79,22 @@ require(["vs/editor/editor.main"], function() {
         let li = document.createElement("li");
         li.innerText = lesson.Name;
         li.classList.add("lesson");
-        li.onclick = () => setEditorCodeFromLesson(lesson.Name);
+        li.onclick = () => {
+          if (currentLessonElement === li)
+            return;
+
+          saveCode();
+
+          if (currentLessonElement !== null)
+            currentLessonElement.classList.remove("selected");
+
+          currentLessonName = lesson.Name;
+          currentLessonElement = li;
+          li.classList.add("selected");
+
+          switchingTabs = true;
+          setEditorCodeFromLesson(lesson.Name);
+        };
 
         lessonContainer.appendChild(li);
       });
@@ -69,7 +121,7 @@ class API {
     return fetch(url, defaultOptions).then(this.handle).then(this.toText);
   }
 
-  setLessonCode(lessonName, code) {
+  saveLessonCode(lessonName, code) {
     let url = new URL(this.baseURL);
     url.pathname += "lesson/save";
 
@@ -79,7 +131,7 @@ class API {
 
     return fetch(url, {
       method: "POST",
-      body: formData,
+      body: data,
       credentials: "same-origin"
     }).then(this.handle);
   }
@@ -102,9 +154,7 @@ class API {
   }
 
   handle(response) {
-    if (!response.ok) {
-        throw Error(response.statusText);
-    }
+    if (!response.ok) throw Error(response.statusText);
     return response;
   }
 
