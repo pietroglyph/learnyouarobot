@@ -99,14 +99,14 @@ func (u *User) Lessons() (Lessons, error) {
 	}
 
 	for _, file := range lessonFiles {
-		name := strings.TrimSuffix(file.Name(), config.LessonFileSuffix)
-		lesson, err := NewLesson(name, userDir)
+		fileName := file.Name()
+		lesson, err := NewLesson(fileName, userDir)
 		if err != nil {
 			return nil, err
 		}
 		lesson.Modified = true
 
-		u.lessons[name] = lesson
+		u.lessons[strings.TrimSuffix(fileName, config.LessonFileSuffix)] = lesson
 	}
 
 	return u.lessons, nil

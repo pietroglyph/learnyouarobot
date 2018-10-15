@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,10 +16,9 @@ import (
 // DeployTarget is a named IP address to deploy code to.
 type DeployTarget struct {
 	// The three below fields are assumed to be read-only if we wish to avoid data races
-	Name    string
-	Address net.IP
-	Jobs    *DeployQueue
-
+	Name     string
+	Address  string
+	Jobs     *DeployQueue
 	RobotLog chan string
 }
 
@@ -41,16 +39,11 @@ type DeployJob struct {
 	BuildOutput chan string
 }
 
-// NewDeployTarget returns a deployment target with the specified name and IP
-func NewDeployTarget(name string, address net.IP) *DeployTarget {
-	target := &DeployTarget{
-		Name:     name,
-		Address:  address,
-		Jobs:     &DeployQueue{},
-		RobotLog: make(chan string, config.RobotLogBufferSize),
-	}
-
-	return target
+// Initialize initializes fields that would otherwise be nil when a DeployTarget
+// is unmarshalled in some fashion. This function is not thread-safe.
+func (t *DeployTarget) Initialize() {
+	t.Jobs = NewDeployQueue()
+	t.RobotLog = make(chan string, config.RobotLogBufferSize)
 }
 
 // KeepJobsRunning is a long-running function that makes sure all jobs added to
@@ -79,7 +72,7 @@ func (t *DeployTarget) RunNextJob() error {
 
 	cmd := exec.Command(filepath.Join(config.BuildDirectory, buildScriptName),
 		"deploy",
-		"-PtargetAddress", t.Address.String(),
+		"-PtargetAddress", t.Address,
 		"-PclassName", job.Lesson.Name,
 	)
 	stdout, err := cmd.StdoutPipe()
@@ -126,17 +119,28 @@ func (q *DeployQueue) RemoveJob(idToRemove uuid.UUID) error {
 	return fmt.Errorf("Couldn't find a job with ID '%s' to remove from deployment queue", idToRemove.String())
 }
 
-// AddJob adds a job to a *DeployQueue
-func (q *DeployQueue) AddJob(job *DeployJob) error {
+// AddNewJob makes a new job and adds it to a *DeployQueue
+func (q *DeployQueue) AddNewJob(lesson *Lesson) (*DeployJob, error) {
+	uuid, err := uuid.NewRandom()
+	if err != nil {
+		return nil, err
+	}
+
+	job := &DeployJob{
+		ID:          uuid,
+		Lesson:      lesson,
+		BuildOutput: make(chan string, config.RobotLogBufferSize),
+	}
+
 	q.mux.Lock()
 	q.queue = append(q.queue, job)
 	q.mux.Unlock()
 	select {
 	case q.JobAddedSignal <- true:
 	default:
-		return fmt.Errorf("Couldn't send to a job added signal on a deploy queue")
+		return nil, fmt.Errorf("Couldn't send to a job added signal on a deploy queue")
 	}
-	return nil
+	return job, nil
 }
 
 // PopJob pops the next job off the top of a *DeployQueue in a thread-safe fashion.

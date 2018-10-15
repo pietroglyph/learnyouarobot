@@ -7,18 +7,20 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/BurntSushi/toml"
 	flag "github.com/ogier/pflag"
 )
 
 type configuration struct {
-	Bind                string
-	StaticDirectory     string
-	UserDataDirectory   string
-	LessonDataDirectory string
-	BuildDirectory      string
-	LessonFileSuffix    string
-	MaxUsers            int
-	RobotLogBufferSize  int
+	Bind                   string
+	StaticDirectory        string
+	UserDataDirectory      string
+	LessonDataDirectory    string
+	DeployTargetConfigPath string
+	BuildDirectory         string
+	LessonFileSuffix       string
+	MaxUsers               int
+	RobotLogBufferSize     int
 }
 
 const (
@@ -28,6 +30,8 @@ const (
 	loginCookieName = "login"
 
 	srcSubDirectory = "src/main/java/com/spartronics4915/learnyouarobot"
+
+	deployTargetConfigHeading = "DeployTarget"
 )
 
 var (
@@ -35,6 +39,7 @@ var (
 	// No synchronization needed because this should be read-only
 	stockLessons       Lessons
 	deployDirectoryMux sync.Mutex
+	deployTargets      []*DeployTarget
 	config             configuration
 )
 
@@ -47,6 +52,7 @@ func main() {
 	flag.StringVar(&config.LessonFileSuffix, "lesson-suffix", ".java", "Suffix of lesson files. Anything before this will be the name of the lesson.")
 	flag.IntVar(&config.RobotLogBufferSize, "robotlog-size", 1e4, "Maximum number of lines to store in the robot log buffer.")
 	flag.StringVarP(&config.BuildDirectory, "build-directory", "B", "build", "Path to a folder containing build scripts, and the following directory structure:\n"+srcSubDirectory)
+	flag.StringVarP(&config.DeployTargetConfigPath, "deploy-targets", "t", "targets.toml", "Path to a toml file defining deploy targets.")
 	flag.Parse()
 
 	users = &Users{
@@ -55,6 +61,7 @@ func main() {
 
 	makeStockLessons()
 	loadUsers()
+	loadDeployTargets()
 
 	http.Handle("/", indexSwitcher(http.FileServer(http.Dir(config.StaticDirectory))))
 	http.HandleFunc("/api/user/login", handleLogin)
@@ -66,6 +73,26 @@ func main() {
 
 	log.Println("Listening on", config.Bind)
 	log.Panicln(http.ListenAndServe(config.Bind, nil))
+}
+
+func loadDeployTargets() {
+	targetConfigBytes, err := ioutil.ReadFile(config.DeployTargetConfigPath)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	// We do this because we use an array of tables in the TOML file
+	var rawValues map[string][]*DeployTarget
+	err = toml.Unmarshal(targetConfigBytes, &rawValues)
+	if err != nil {
+		log.Panic(err)
+	}
+	deployTargets = rawValues[deployTargetConfigHeading]
+	for _, v := range deployTargets {
+		v.Initialize()
+	}
+
+	log.Println("Loaded", len(deployTargets), "deploy targets.")
 }
 
 func loadUsers() {

@@ -1,0 +1,4 @@
+[[DeployTarget]]
+# The target with the name "Dry Run" is a special case that only compiles the code
+Name = "Dry Run"
+Address = "" # Doesn't matter here

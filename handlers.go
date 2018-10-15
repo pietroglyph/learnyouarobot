@@ -116,9 +116,68 @@ func handleSaveLesson(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDeployLesson(w http.ResponseWriter, r *http.Request) {
+	user, err := GetCurrentUser(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
+	targetName := r.URL.Query().Get("target")
+	if targetName == "" {
+		http.Error(w, "'target' query parameter cannot be missing or empty", http.StatusBadRequest)
+		return
+	}
+
+	lessonName := r.URL.Query().Get("lesson")
+	if lessonName == "" {
+		http.Error(w, "'lesson' query parameter cannot be missing or empty", http.StatusBadRequest)
+		return
+	}
+
+	lessons, err := user.Lessons()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	lesson, exists := lessons[lessonName]
+	if !exists {
+		http.Error(w, "User "+user.Name+" doesn't have a lesson by name "+lessonName, http.StatusBadRequest)
+		return
+	}
+
+	var target *DeployTarget
+	for _, v := range deployTargets {
+		if v.Name == targetName {
+			target = v
+			break
+		}
+	}
+	if target == nil {
+		http.Error(w, "No target named "+targetName+" found", http.StatusBadRequest)
+		return
+	}
+
+	job, err := target.Jobs.AddNewJob(lesson)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprint(w, job.ID.String())
 }
 
 func handleGetDeployQueue(w http.ResponseWriter, r *http.Request) {
+	targetName := r.URL.Query().Get("target")
+	if targetName == "" {
+		http.Error(w, "'target' query parameter cannot be missing or empty", http.StatusBadRequest)
+		return
+	}
 
+	for _, v := range deployTargets {
+		if v.Name == targetName {
+			fmt.Fprint(w, v.Jobs.String())
+			return
+		}
+	}
+	http.Error(w, "no target by name "+targetName+" found", http.StatusBadRequest)
 }
