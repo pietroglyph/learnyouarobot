@@ -2,6 +2,9 @@
 lessons/*
 users/*
 
+# Gradle/build files
+build/.gradle/
+
 # Compiled class file
 *.class
 

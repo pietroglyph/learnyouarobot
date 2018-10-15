@@ -5,20 +5,20 @@ plugins {
     id "jaci.openrio.gradle.GradleRIO" version "2018.01.22"
 }
 
+if (!project.hasProperty("className"))
+  throw new InvalidUserDataException("Please specify a class name to build -PclassName.");
+  if (!project.hasProperty("targetAddress"))
+    throw new InvalidUserDataException("Please specify a deploy target with -PtargetAddress.");
+
 def TEAM = 4915
 def ROBOT_CLASS = "com.spartronics4915.learnyouarobot."
-ROBOT_CLASS += findProperty 'className' ?: 'Lesson'
+ROBOT_CLASS += project.className // Defined via -PclassName
 
-if (!project.hasProperty("targetAddress"))
-  throw new InvalidUserDataException("Please specify a deploy target with -PtargetAddress.");
-
-// Define my targets (RoboRIO) and artifacts (deployable files)
-// This is added by GradleRIO's backing project EmbeddedTools.
 deploy {
     targets {
         target("roborio", jaci.openrio.gradle.frc.RoboRIO) {
             team = TEAM
-            addresses = [ targetAddress ] // Defined via -PtargetAddress
+            addresses = [ project.targetAddress ] // Defined via -PtargetAddress
         }
     }
     artifacts {
