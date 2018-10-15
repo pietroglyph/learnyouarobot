@@ -1,3 +1,9 @@
+:root {
+  --lesson-pane-width: 20%;
+  --button-row-height: 5%;
+  --toggle-run-button-width: 80%;
+}
+
 body {
   font-family: sans-serif;
   width: 100%;
@@ -37,7 +43,7 @@ button:active {
 }
 
 #lessonPane {
-  width: 20%;
+  width: var(--lesson-pane-width);
   height: 100%;
 }
 
@@ -45,7 +51,7 @@ button:active {
   display: flex;
   justify-content: left;
   align-items: center;
-  height: 5%;
+  height: var(--button-row-height);
   margin: 0px;
   margin-left: 5px;
 }
@@ -75,37 +81,38 @@ button:active {
   font-weight: bold;
 }
 
-.lesson.unsaved::before {
-  content: "* "
+.lesson.unsaved::after {
+  content: " (Unsaved)";
+  font-style: oblique;
 }
 
 .editorColumn {
   display: flex;
   flex-direction: column;
-  width: 80%;
+  width: calc(100% - var(--lesson-pane-width));
   height: 100%;
 }
 
 #editor {
-  height: 95%;
+  height: 100%;
   width: 100%;
 }
 
 .buttonRow {
   display: flex;
   flex-direction: row;
-  height: 5%;
+  height: var(--button-row-height);
   width: 100%;
 }
 
 #switchRobotButton {
-  width: 20%;
+  width: calc(100% - var(--toggle-run-button-width));
   height: 100%;
   background-color: blue;
 }
 
 #toggleRunButton {
-  width: 80%;
+  width: var(--toggle-run-button-width);
   height: 100%;
 }
 

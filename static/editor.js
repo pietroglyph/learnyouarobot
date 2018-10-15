@@ -42,7 +42,9 @@ require(["vs/editor/editor.main"], function() {
       if (currentLessonElement !== null)
         currentLessonElement.classList.remove("unsaved");
 
-      api.saveLessonCode(currentLessonName, editor.getValue()).catch(showErrorPopup);
+      // A " " looks the same as no form value to the server, so we make an empty editor into whitespace
+      let code = editor.getValue()
+      api.saveLessonCode(currentLessonName, code !== "" ? code : " ").catch(showErrorPopup);
       needsToSave = false;
     }
 
