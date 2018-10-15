@@ -43,7 +43,7 @@ require(["vs/editor/editor.main"], function() {
         currentLessonElement.classList.remove("unsaved");
 
       // A " " looks the same as no form value to the server, so we make an empty editor into whitespace
-      let code = editor.getValue()
+      let code = editor.getValue();
       api.saveLessonCode(currentLessonName, code !== "" ? code : " ").catch(showErrorPopup);
       needsToSave = false;
     }
@@ -156,8 +156,11 @@ class API {
   }
 
   handle(response) {
-    if (!response.ok) throw Error(response.statusText);
-    return response;
+    let unreadResponse = response.clone();
+    return response.text().then((bodyText) => {
+      if (!response.ok) throw Error(response.statusText + ": " + bodyText);
+      return unreadResponse;
+    });
   }
 
   toJSON(response) {

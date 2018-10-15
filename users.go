@@ -87,8 +87,9 @@ func (u *User) Lessons() (Lessons, error) {
 	}
 
 	for k, v := range stockLessons {
-		v.Owner = u
 		u.lessons[k] = v
+		// This is only a pointer to a stock lesson, and it's important that we don't
+		// write to it.
 	}
 
 	userDir := filepath.Join(config.UserDataDirectory, u.Name)
@@ -105,10 +106,13 @@ func (u *User) Lessons() (Lessons, error) {
 			return nil, err
 		}
 		lesson.Modified = true
+		lesson.Owner = u
 
 		u.lessons[strings.TrimSuffix(fileName, config.LessonFileSuffix)] = lesson
 	}
 
+	// We return a copy of u.lessons, so we don't worry about data races on map access,
+	// just data races on the underlying *Lesson.
 	return u.lessons, nil
 }
 

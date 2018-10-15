@@ -106,13 +106,17 @@ func handleSaveLesson(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lesson, ok := lessons[lessonName]
-	if !ok {
+	lesson, exists := lessons[lessonName]
+	if !exists {
 		http.Error(w, "no lesson by the name '"+lessonName+"' exists", http.StatusBadRequest)
 		return
 	}
 
-	lesson.SaveCode(code)
+	err = lesson.SaveCode(code)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func handleDeployLesson(w http.ResponseWriter, r *http.Request) {
