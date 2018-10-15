@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 
 	flag "github.com/ogier/pflag"
 )
@@ -14,8 +15,10 @@ type configuration struct {
 	StaticDirectory     string
 	UserDataDirectory   string
 	LessonDataDirectory string
+	BuildDirectory      string
 	LessonFileSuffix    string
 	MaxUsers            int
+	RobotLogBufferSize  int
 }
 
 const (
@@ -23,14 +26,16 @@ const (
 	loginFile  = "login.html"
 
 	loginCookieName = "login"
+
+	srcSubDirectory = "src/main/java/com/spartronics4915/learnyouarobot"
 )
 
 var (
 	users *Users
 	// No synchronization needed because this should be read-only
-	stockLessons Lessons
-
-	config configuration
+	stockLessons       Lessons
+	deployDirectoryMux sync.Mutex
+	config             configuration
 )
 
 func main() {
@@ -39,7 +44,9 @@ func main() {
 	flag.IntVarP(&config.MaxUsers, "max-users", "u", 20, "Maximum number of users.")
 	flag.StringVarP(&config.UserDataDirectory, "user-data", "d", "users", "Path to a folder containing user data folders.")
 	flag.StringVarP(&config.LessonDataDirectory, "lesson-data", "l", "lessons", "Path to a folder containing stock lessons.")
-	flag.StringVar(&config.LessonFileSuffix, "lesson-suffix", ".java", "Glob matching pattern for lesson files.")
+	flag.StringVar(&config.LessonFileSuffix, "lesson-suffix", ".java", "Suffix of lesson files. Anything before this will be the name of the lesson.")
+	flag.IntVar(&config.RobotLogBufferSize, "robotlog-size", 1e4, "Maximum number of lines to store in the robot log buffer.")
+	flag.StringVarP(&config.BuildDirectory, "build-directory", "B", "build", "Path to a folder containing build scripts, and the following directory structure:\n"+srcSubDirectory)
 	flag.Parse()
 
 	users = &Users{

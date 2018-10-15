@@ -15,6 +15,7 @@ type Lesson struct {
 	Modified bool
 	// Not included in JSON
 	Owner *User `json:"-"`
+	Path  string
 
 	file *os.File
 }
@@ -33,10 +34,11 @@ func NewLessons() Lessons {
 func NewLesson(fileName string, directory string) (*Lesson, error) {
 	lesson := &Lesson{
 		Name: strings.TrimSuffix(fileName, config.LessonFileSuffix),
+		Path: filepath.Join(directory, fileName),
 		// Modified should be set by the user!
 	}
 
-	file, err := os.Open(filepath.Join(directory, fileName))
+	file, err := os.Open(lesson.Path)
 	if err != nil {
 		return &Lesson{}, err
 	}
