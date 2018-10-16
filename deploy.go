@@ -43,7 +43,7 @@ type DeployJob struct {
 // is unmarshalled in some fashion. This function is not thread-safe.
 func (t *DeployTarget) Initialize() {
 	t.Jobs = NewDeployQueue()
-	t.RobotLog = make(chan string, config.RobotLogBufferSize)
+	t.RobotLog = make(chan string, config.ChannelBufferSize)
 }
 
 // KeepJobsRunning is a long-running function that makes sure all jobs added to
@@ -62,10 +62,18 @@ func (t *DeployTarget) KeepJobsRunning() {
 
 // RunNextJob runs the next job and waits for it to complete.
 func (t *DeployTarget) RunNextJob() error {
-	job, err := t.Jobs.PopJob()
+	job, err := t.Jobs.NextJob()
 	if err != nil {
 		return err
 	}
+
+	defer func() {
+		err = t.Jobs.PopJob()
+		if err != nil {
+			log.Println(err)
+		}
+	}()
+
 	deployDirectoryMux.Lock()
 	defer deployDirectoryMux.Unlock()
 	os.Symlink(job.Lesson.Path, filepath.Join(config.BuildDirectory, srcSubDirectory))
@@ -80,14 +88,19 @@ func (t *DeployTarget) RunNextJob() error {
 		return err
 	}
 	go job.updateBuildOutputFromReader(stdout)
-	return cmd.Run()
+
+	err = cmd.Run()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // NewDeployQueue makes a new deploy queue. If this is not used the JobAddedSignal
 // chan will not be made.
 func NewDeployQueue() *DeployQueue {
 	return &DeployQueue{
-		JobAddedSignal: make(chan bool),
+		JobAddedSignal: make(chan bool, 1),
 	}
 }
 
@@ -129,7 +142,7 @@ func (q *DeployQueue) AddNewJob(lesson *Lesson) (*DeployJob, error) {
 	job := &DeployJob{
 		ID:          uuid,
 		Lesson:      lesson,
-		BuildOutput: make(chan string, config.RobotLogBufferSize),
+		BuildOutput: make(chan string, config.ChannelBufferSize),
 	}
 
 	q.mux.Lock()
@@ -137,24 +150,36 @@ func (q *DeployQueue) AddNewJob(lesson *Lesson) (*DeployJob, error) {
 	q.mux.Unlock()
 	select {
 	case q.JobAddedSignal <- true:
-	default:
-		return nil, fmt.Errorf("Couldn't send to a job added signal on a deploy queue")
-	}
+	} // No default case because this job will be consumed if the buffer is already full
 	return job, nil
 }
 
-// PopJob pops the next job off the top of a *DeployQueue in a thread-safe fashion.
-// It will return an error if the queue is empty
-func (q *DeployQueue) PopJob() (*DeployJob, error) {
-	q.mux.Lock()
-	defer q.mux.Unlock()
+// NextJob gets the next job in a *DeployQueue.
+// It will return an error if the queue is empty.
+func (q *DeployQueue) NextJob() (*DeployJob, error) {
+	q.mux.RLock()
+	defer q.mux.RUnlock()
 	if len(q.queue) < 0 {
 		return nil, fmt.Errorf("Deployment queue is empty")
 	}
+	return q.queue[0], nil
+}
 
-	job := q.queue[0]
-	q.removeElement(0)
-	return job, nil
+// PopJob removes the job on the top of the queue in a thread-safe fashion.
+// It will return an error if the queue is empty. We don't return the job
+// on top of the queue, because that can be retrieved with NextJob.
+func (q *DeployQueue) PopJob() error {
+	q.mux.Lock()
+	defer q.mux.Unlock()
+	if len(q.queue) < 0 {
+		return fmt.Errorf("Deployment queue is empty")
+	}
+	err := q.removeElement(0)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // IsEmpty checks if a *DeployQueue has any jobs in a thread-safe fashion.

@@ -42,16 +42,16 @@ func (u *Users) GetUser(name string) (*User, error) {
 }
 
 // Add adds a user with a specific name. There can be no duplicate named users.
-func (u *Users) Add(name string) (*User, error) {
+func (u *Users) Add(name string) (*User, bool, error) {
 	_, err := u.GetUser(name)
 	if err == nil {
-		return nil, fmt.Errorf("User %s already exists", name)
+		return nil, true, fmt.Errorf("User %s already exists", name)
 	}
 
 	u.mux.Lock()
 	defer u.mux.Unlock()
 	if len(u.array) > u.MaxUsers {
-		return nil, fmt.Errorf("The user limit of %d has been reached", u.MaxUsers)
+		return nil, false, fmt.Errorf("The user limit of %d has been reached", u.MaxUsers)
 	}
 	user := &User{
 		Name:       name,
@@ -62,14 +62,14 @@ func (u *Users) Add(name string) (*User, error) {
 	dataDir := filepath.Join(config.UserDataDirectory, name)
 	if _, err := os.Stat(dataDir); os.IsNotExist(err) {
 		if err = os.MkdirAll(dataDir, os.ModePerm); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 	}
 	user.DataDirectory = dataDir
 
 	u.array = append(u.array, user)
 
-	return user, nil
+	return user, false, nil
 }
 
 // NumUsers returns the number of loaded users

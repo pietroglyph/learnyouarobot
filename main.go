@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/BurntSushi/toml"
+	"github.com/gorilla/websocket"
 	flag "github.com/ogier/pflag"
 )
 
@@ -20,7 +21,7 @@ type configuration struct {
 	BuildDirectory         string
 	LessonFileSuffix       string
 	MaxUsers               int
-	RobotLogBufferSize     int
+	ChannelBufferSize      int
 }
 
 const (
@@ -41,6 +42,11 @@ var (
 	deployDirectoryMux sync.Mutex
 	deployTargets      []*DeployTarget
 	config             configuration
+
+	upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+	}
 )
 
 func main() {
@@ -50,8 +56,8 @@ func main() {
 	flag.StringVarP(&config.UserDataDirectory, "user-data", "d", "users", "Path to a folder containing user data folders.")
 	flag.StringVarP(&config.LessonDataDirectory, "lesson-data", "l", "lessons", "Path to a folder containing stock lessons.")
 	flag.StringVar(&config.LessonFileSuffix, "lesson-suffix", ".java", "Suffix of lesson files. Anything before this will be the name of the lesson.")
-	flag.IntVar(&config.RobotLogBufferSize, "robotlog-size", 1e4, "Maximum number of lines to store in the robot log buffer.")
-	flag.StringVarP(&config.BuildDirectory, "build-directory", "B", "build", "Path to a folder containing build scripts, and the following directory structure:\n"+srcSubDirectory)
+	flag.IntVar(&config.ChannelBufferSize, "msgbuf-size", 1e4, "Size of message buffers, in lines.")
+	flag.StringVarP(&config.BuildDirectory, "build-directory", "B", "build", "Path to a folder containing build scripts, and the following directory structure:\n"+srcSubDirectory+".")
 	flag.StringVarP(&config.DeployTargetConfigPath, "deploy-targets", "t", "targets.toml", "Path to a toml file defining deploy targets.")
 	flag.Parse()
 
@@ -69,7 +75,8 @@ func main() {
 	http.HandleFunc("/api/lesson/get", handleGetLesson)
 	http.HandleFunc("/api/lesson/save", handleSaveLesson)
 	http.HandleFunc("/api/lesson/deploy", handleDeployLesson)
-	http.HandleFunc("/api/lesson/deploy/queue", handleGetDeployQueue)
+	http.HandleFunc("/api/target/queue", handleGetDeployQueue)
+	http.HandleFunc("/api/target/robotlog", handleGetRobotLog)
 
 	log.Println("Listening on", config.Bind)
 	log.Panicln(http.ListenAndServe(config.Bind, nil))
@@ -90,6 +97,7 @@ func loadDeployTargets() {
 	deployTargets = rawValues[deployTargetConfigHeading]
 	for _, v := range deployTargets {
 		v.Initialize()
+		go v.KeepJobsRunning()
 	}
 
 	log.Println("Loaded", len(deployTargets), "deploy targets.")
@@ -107,7 +115,7 @@ func loadUsers() {
 			continue
 		}
 
-		_, err := users.Add(file.Name())
+		_, _, err := users.Add(file.Name())
 		if err != nil {
 			log.Println("Couldn't load user from directory", file.Name()+".")
 		}

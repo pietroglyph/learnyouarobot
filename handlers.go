@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 func handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -15,8 +18,8 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := users.Add(name)
-	if err != nil {
+	_, exists, err := users.Add(name)
+	if err != nil && !exists {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -167,7 +170,26 @@ func handleDeployLesson(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprint(w, job.ID.String())
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	writeMessage(conn, job.ID.String())
+
+	for line := range job.BuildOutput {
+		writeMessage(conn, line)
+	}
+}
+
+func writeMessage(conn *websocket.Conn, message string) {
+	err := conn.WriteMessage(websocket.TextMessage, []byte(message))
+	if err != nil {
+		log.Println(err)
+		return
+	}
 }
 
 func handleGetDeployQueue(w http.ResponseWriter, r *http.Request) {
@@ -184,4 +206,38 @@ func handleGetDeployQueue(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	http.Error(w, "no target by name "+targetName+" found", http.StatusBadRequest)
+}
+
+func handleGetRobotLog(w http.ResponseWriter, r *http.Request) {
+	targetName := r.URL.Query().Get("target")
+	if targetName == "" {
+		http.Error(w, "'target' query parameter cannot be missing or empty", http.StatusBadRequest)
+		return
+	}
+
+	var target *DeployTarget
+	for _, v := range deployTargets {
+		if v.Name == targetName {
+			target = v
+			break
+		}
+	}
+	if target == nil {
+		http.Error(w, "no target by name "+targetName+" found", http.StatusBadRequest)
+		return
+	}
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	for line := range target.RobotLog {
+		err = conn.WriteMessage(websocket.TextMessage, []byte(line))
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}
 }
