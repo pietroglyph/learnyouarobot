@@ -33,6 +33,11 @@ const (
 	srcSubDirectory = "src/main/java/com/spartronics4915/learnyouarobot"
 
 	deployTargetConfigHeading = "DeployTarget"
+
+	dryRunLessonName = "Dry Run"
+
+	dryRunTaskName = "build"
+	deployTaskName = "deploy"
 )
 
 var (

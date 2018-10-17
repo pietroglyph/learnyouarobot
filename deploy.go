@@ -55,7 +55,7 @@ func (t *DeployTarget) KeepJobsRunning() {
 		for t.Jobs.IsNewJobReady() {
 			err := t.RunCurrentJob()
 			if err != nil {
-				log.Println("Couldn't run a job: ", err)
+				log.Println("Couldn't run a job:", err)
 			}
 		}
 	}
@@ -70,18 +70,38 @@ func (t *DeployTarget) RunCurrentJob() error {
 
 	deployDirectoryMux.Lock()
 	defer deployDirectoryMux.Unlock()
-	os.Symlink(job.Lesson.Path, filepath.Join(config.BuildDirectory, srcSubDirectory))
+
+	lessonAbsPath, err := filepath.Abs(job.Lesson.Path)
+	if err != nil {
+		return err
+	}
+	symlinkPath := filepath.Join(config.BuildDirectory, srcSubDirectory, job.Lesson.Name+config.LessonFileSuffix)
+
+	err = os.Remove(symlinkPath)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	err = os.Symlink(lessonAbsPath, symlinkPath)
+	if err != nil {
+		return err
+	}
+
+	taskName := deployTaskName
+	if t.Name == dryRunLessonName {
+		taskName = dryRunTaskName
+	}
 
 	path, err := filepath.Abs(filepath.Join(config.BuildDirectory, buildScriptName))
 	if err != nil {
 		return err
 	}
 	cmd := exec.Command(path,
-		"deploy",
+		taskName,
 		"-PtargetAddress="+t.Address,
 		"-PclassName="+job.Lesson.Name,
 	)
 	cmd.Dir = config.BuildDirectory
+
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -96,6 +116,10 @@ func (t *DeployTarget) RunCurrentJob() error {
 	err = cmd.Run()
 	if err != nil {
 		return err
+	}
+	// Cancel dry runs once they're done
+	if t.Name == dryRunLessonName {
+		_ = t.Jobs.RemoveJob(job.ID) // We ignore the error because the job may be done
 	}
 	return nil
 }
@@ -163,7 +187,7 @@ func (q *DeployQueue) AddNewJob(lesson *Lesson) (*DeployJob, error) {
 func (q *DeployQueue) CurrentJob() (*DeployJob, error) {
 	q.mux.RLock()
 	defer q.mux.RUnlock()
-	if len(q.queue) < 0 {
+	if len(q.queue) < 1 {
 		return nil, fmt.Errorf("Deployment queue is empty")
 	}
 	return q.queue[0], nil
@@ -184,7 +208,7 @@ func (q *DeployQueue) IsNewJobReady() bool {
 // Does not synchronize or check if index is in bounds!
 // That's the responsibility of the user.
 func (q *DeployQueue) removeElement(i int) error {
-	// This magic incantation avoids memory leaks
+	// This magic incantation avoids memory leaks while deleting an element
 	q.queue[i] = q.queue[len(q.queue)-1]
 	q.queue[len(q.queue)-1] = nil
 	q.queue = q.queue[:len(q.queue)-1]

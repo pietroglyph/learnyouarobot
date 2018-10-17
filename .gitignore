@@ -4,6 +4,8 @@ users/*
 
 # Gradle/build files
 build/.gradle/
+build/build/*
+build/src/main/java/com/spartronics4915/learnyouarobot/*
 
 # Compiled class file
 *.class
