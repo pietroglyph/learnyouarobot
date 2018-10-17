@@ -38,7 +38,7 @@ func NewLesson(fileName string, directory string) (*Lesson, error) {
 		// Modified should be set by the user!
 	}
 
-	file, err := os.Create(lesson.Path)
+	file, err := os.OpenFile(lesson.Path, os.O_RDWR, 0666)
 	if err != nil {
 		return &Lesson{}, err
 	}
