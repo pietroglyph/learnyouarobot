@@ -26,8 +26,9 @@ type DeployTarget struct {
 type DeployQueue struct {
 	JobAddedSignal chan bool
 
-	queue []*DeployJob
-	mux   sync.RWMutex
+	lastJob *DeployJob
+	queue   []*DeployJob
+	mux     sync.RWMutex
 }
 
 // DeployJob stores a unique ID, a lesson to be deployed, and a build output channel.
@@ -51,8 +52,8 @@ func (t *DeployTarget) Initialize() {
 func (t *DeployTarget) KeepJobsRunning() {
 	for {
 		<-t.Jobs.JobAddedSignal
-		for !t.Jobs.IsEmpty() {
-			err := t.RunNextJob()
+		for t.Jobs.IsNewJobReady() {
+			err := t.RunCurrentJob()
 			if err != nil {
 				log.Println("Couldn't run a job: ", err)
 			}
@@ -60,34 +61,37 @@ func (t *DeployTarget) KeepJobsRunning() {
 	}
 }
 
-// RunNextJob runs the next job and waits for it to complete.
-func (t *DeployTarget) RunNextJob() error {
-	job, err := t.Jobs.NextJob()
+// RunCurrentJob runs the next job and waits for it to complete.
+func (t *DeployTarget) RunCurrentJob() error {
+	job, err := t.Jobs.CurrentJob()
 	if err != nil {
 		return err
 	}
-
-	defer func() {
-		err = t.Jobs.PopJob()
-		if err != nil {
-			log.Println(err)
-		}
-	}()
 
 	deployDirectoryMux.Lock()
 	defer deployDirectoryMux.Unlock()
 	os.Symlink(job.Lesson.Path, filepath.Join(config.BuildDirectory, srcSubDirectory))
 
-	cmd := exec.Command(filepath.Join(config.BuildDirectory, buildScriptName),
+	path, err := filepath.Abs(filepath.Join(config.BuildDirectory, buildScriptName))
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command(path,
 		"deploy",
-		"-PtargetAddress", t.Address,
-		"-PclassName", job.Lesson.Name,
+		"-PtargetAddress="+t.Address,
+		"-PclassName="+job.Lesson.Name,
 	)
+	cmd.Dir = config.BuildDirectory
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
 	}
-	go job.updateBuildOutputFromReader(stdout)
+	// TODO: Give stderr special formatting
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+	go job.updateBuildOutputFromReader(io.MultiReader(stdout, stderr))
 
 	err = cmd.Run()
 	if err != nil {
@@ -154,9 +158,9 @@ func (q *DeployQueue) AddNewJob(lesson *Lesson) (*DeployJob, error) {
 	return job, nil
 }
 
-// NextJob gets the next job in a *DeployQueue.
+// CurrentJob gets the next job in a *DeployQueue.
 // It will return an error if the queue is empty.
-func (q *DeployQueue) NextJob() (*DeployJob, error) {
+func (q *DeployQueue) CurrentJob() (*DeployJob, error) {
 	q.mux.RLock()
 	defer q.mux.RUnlock()
 	if len(q.queue) < 0 {
@@ -165,28 +169,16 @@ func (q *DeployQueue) NextJob() (*DeployJob, error) {
 	return q.queue[0], nil
 }
 
-// PopJob removes the job on the top of the queue in a thread-safe fashion.
-// It will return an error if the queue is empty. We don't return the job
-// on top of the queue, because that can be retrieved with NextJob.
-func (q *DeployQueue) PopJob() error {
+// IsNewJobReady checks if a *DeployQueue has any jobs in a thread-safe fashion.
+func (q *DeployQueue) IsNewJobReady() bool {
+	currentJob, _ := q.CurrentJob() // Yes, nil is a valid "next job"
+
+	// We must lock after getting the current job, or we'll cause a deadlock
 	q.mux.Lock()
 	defer q.mux.Unlock()
-	if len(q.queue) < 0 {
-		return fmt.Errorf("Deployment queue is empty")
-	}
-	err := q.removeElement(0)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// IsEmpty checks if a *DeployQueue has any jobs in a thread-safe fashion.
-func (q *DeployQueue) IsEmpty() bool {
-	q.mux.RLock()
-	defer q.mux.RUnlock()
-	return len(q.queue) <= 0
+	jobReady := q.lastJob != currentJob
+	q.lastJob = currentJob
+	return jobReady
 }
 
 // Does not synchronize or check if index is in bounds!
@@ -202,6 +194,8 @@ func (q *DeployQueue) removeElement(i int) error {
 func (j *DeployJob) updateBuildOutputFromReader(r io.Reader) {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
-		j.BuildOutput <- scanner.Text()
+		text := scanner.Text()
+		j.BuildOutput <- text
 	}
+	close(j.BuildOutput)
 }

@@ -5,12 +5,17 @@ const defaultOptions = {
   credentials: "same-origin"
 };
 const savingRate = 1500;
+const RunStatusEnum = Object.freeze({"RUNNING": 1, "WAITING": 2, "STOPPED": 3});
 
 var api;
 var needsToSave = false;
 var switchingTabs = false;
+var runStatus = RunStatusEnum.STOPPED;
 var currentLessonName = null;
 var currentLessonElement = null;
+var currentTargetName = "Dry Run"
+var currentJobID = null;
+var messagesSinceRun = 0;
 
 require.config({ paths: { "vs": "monaco-editor/min/vs" }});
 require(["vs/editor/editor.main"], function() {
@@ -50,6 +55,7 @@ require(["vs/editor/editor.main"], function() {
 
     // Now that the editor is loaded we'll start dealing with the API and UI
     let lessonContainer = document.querySelector("#lessons");
+    let toggleRunButton = document.querySelector("#toggleRunButton");
 
     window.addEventListener("keypress", (event) => {
       if (event.ctrlKey && event.key === "s") {
@@ -101,6 +107,48 @@ require(["vs/editor/editor.main"], function() {
         lessonContainer.appendChild(li);
       });
     }).catch(showErrorPopup);
+
+    toggleRunButton.onclick = () => {
+      messagesSinceRun = 0;
+      if (runStatus !== RunStatusEnum.STOPPED) {
+        runStatus = RunStatusEnum.STOPPED;
+        toggleRunButton.innerText = "Run";
+        toggleRunButton.className = "start";
+
+        if (currentJobID !== null) {
+          api.cancelDeploy(currentTargetName, currentJobID);
+        }
+      } else if (runStatus === RunStatusEnum.STOPPED) {
+        if (currentLessonName === null) return;
+
+        runStatus = RunStatusEnum.WAITING;
+        toggleRunButton.innerText = "Waiting...";
+        toggleRunButton.className = "waiting";
+
+        api.getDeployQueue(currentTargetName).then((queueText) => {
+          if (runStatus === RunStatusEnum.WAITING)
+            toggleRunButton.innerText = "Waiting (" + queueText + ")...";
+        });
+        let socket = api.deploy(currentTargetName, currentLessonName);
+        socket.onmessage = (messageEvent) => {
+          messagesSinceRun++;
+          if (messagesSinceRun > 1) {
+            if (runStatus !== RunStatusEnum.WAITING)
+              return;
+
+            toggleRunButton.innerText = "Building and deploying...";
+            console.log(messageEvent.data); // TODO
+          } else {
+            currentJobID = messageEvent.data;
+          }
+        };
+        socket.onclose = () => {
+          toggleRunButton.innerText = "Running...";
+          toggleRunButton.className = "stop";
+          runStatus = RunStatusEnum.RUNNING;
+        };
+      }
+    };
 });
 
 class API {
@@ -143,16 +191,26 @@ class API {
     url.pathname += "lesson/deploy";
     url.searchParams.set("target", target);
     url.searchParams.set("lesson", lessonName);
+    url.protocol = "ws:";
 
-    return fetch(url, defaultOptions).then(this.handle);
+    return new WebSocket(url);
   }
 
   getDeployQueue(target) {
     let url = new URL(this.baseURL);
-    url.pathname += "lesson/deploy/queue";
+    url.pathname += "target/queue";
     url.searchParams.set("target", target);
 
-    return fetch(url, defaultOptions).then(this.handle).then(this.toJSON);
+    return fetch(url, defaultOptions).then(this.handle).then(this.toText);
+  }
+
+  cancelDeploy(target, jobID) {
+    let url = new URL(this.baseURL);
+    url.pathname += "lesson/deploy/cancel";
+    url.searchParams.set("target", target);
+    url.searchParams.set("jobid", jobID);
+
+    return fetch(url, defaultOptions).then(this.handle);
   }
 
   handle(response) {

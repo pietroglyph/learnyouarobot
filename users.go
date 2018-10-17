@@ -42,6 +42,8 @@ func (u *Users) GetUser(name string) (*User, error) {
 }
 
 // Add adds a user with a specific name. There can be no duplicate named users.
+// The second return value is true and error is not nil if the user already exists.
+// The second return value may be false while error is not nil.
 func (u *Users) Add(name string) (*User, bool, error) {
 	_, err := u.GetUser(name)
 	if err == nil {
@@ -87,9 +89,9 @@ func (u *User) Lessons() (Lessons, error) {
 	}
 
 	for k, v := range stockLessons {
-		u.lessons[k] = v
-		// This is only a pointer to a stock lesson, and it's important that we don't
-		// write to it.
+		newLesson := *v
+		newLesson.Owner = u
+		u.lessons[k] = &newLesson
 	}
 
 	userDir := filepath.Join(config.UserDataDirectory, u.Name)

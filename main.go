@@ -75,6 +75,7 @@ func main() {
 	http.HandleFunc("/api/lesson/get", handleGetLesson)
 	http.HandleFunc("/api/lesson/save", handleSaveLesson)
 	http.HandleFunc("/api/lesson/deploy", handleDeployLesson)
+	http.HandleFunc("/api/lesson/deploy/cancel", handleCancelDeploy)
 	http.HandleFunc("/api/target/queue", handleGetDeployQueue)
 	http.HandleFunc("/api/target/robotlog", handleGetRobotLog)
 
@@ -95,9 +96,9 @@ func loadDeployTargets() {
 		log.Panic(err)
 	}
 	deployTargets = rawValues[deployTargetConfigHeading]
-	for _, v := range deployTargets {
-		v.Initialize()
-		go v.KeepJobsRunning()
+	for _, t := range deployTargets {
+		t.Initialize()
+		go t.KeepJobsRunning()
 	}
 
 	log.Println("Loaded", len(deployTargets), "deploy targets.")

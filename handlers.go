@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -182,6 +183,7 @@ func handleDeployLesson(w http.ResponseWriter, r *http.Request) {
 	for line := range job.BuildOutput {
 		writeMessage(conn, line)
 	}
+	conn.Close()
 }
 
 func writeMessage(conn *websocket.Conn, message string) {
@@ -189,6 +191,39 @@ func writeMessage(conn *websocket.Conn, message string) {
 	if err != nil {
 		log.Println(err)
 		return
+	}
+}
+
+func handleCancelDeploy(w http.ResponseWriter, r *http.Request) {
+	targetName := r.URL.Query().Get("target")
+	if targetName == "" {
+		http.Error(w, "'target' query parameter cannot be missing or empty", http.StatusBadRequest)
+		return
+	}
+
+	jobIDString := r.URL.Query().Get("jobid")
+	if jobIDString == "" {
+		http.Error(w, "'jobid' query parameter cannot be missing or empty", http.StatusBadRequest)
+		return
+	}
+
+	jobID, err := uuid.Parse(jobIDString)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var target *DeployTarget
+	for _, v := range deployTargets {
+		if v.Name == targetName {
+			target = v
+			break
+		}
+	}
+
+	err = target.Jobs.RemoveJob(jobID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
