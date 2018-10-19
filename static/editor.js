@@ -8,13 +8,16 @@ const savingRate = 1500;
 const RunStatusEnum = Object.freeze({"RUNNING": 1, "WAITING": 2, "STOPPED": 3});
 
 var api;
+
 var needsToSave = false;
 var switchingTabs = false;
-var runStatus = RunStatusEnum.STOPPED;
 var currentLessonName = null;
 var currentLessonElement = null;
+
+var currentTargetElement = null;
 var currentTargetName = "Dry Run"
 var currentJobID = null;
+var runStatus = RunStatusEnum.STOPPED;
 var messagesSinceRun = 0;
 
 require.config({ paths: { "vs": "monaco-editor/min/vs" }});
@@ -32,30 +35,15 @@ require(["vs/editor/editor.main"], function() {
     });
     window.onresize = () => editor.layout();
 
-    function showErrorPopup(error) {
-      alert(error);
-      console.error(error);
-    }
-
-    function setEditorCodeFromLesson(lessonName) {
-      api.getLessonCode(lessonName).then(code => editor.setValue(code)).catch(showErrorPopup);
-    }
-
-    function saveCode() {
-      if (!needsToSave || currentLessonName === null) return;
-
-      if (currentLessonElement !== null)
-        currentLessonElement.classList.remove("unsaved");
-
-      // A " " looks the same as no form value to the server, so we make an empty editor into whitespace
-      let code = editor.getValue();
-      api.saveLessonCode(currentLessonName, code !== "" ? code : " ").catch(showErrorPopup);
-      needsToSave = false;
-    }
-
     // Now that the editor is loaded we'll start dealing with the API and UI
     let lessonContainer = document.querySelector("#lessons");
+    let switchRobotContainer = document.querySelector("#switcherPopup");
     let toggleRunButton = document.querySelector("#toggleRunButton");
+    let targetContainer = document.querySelector("#deployTargets");
+
+    let baseURL = new URL(window.location.href);
+    baseURL.pathname += "api/";
+    api = new API(baseURL);
 
     window.addEventListener("keypress", (event) => {
       if (event.ctrlKey && event.key === "s") {
@@ -78,9 +66,25 @@ require(["vs/editor/editor.main"], function() {
       }
     });
 
-    let baseURL = new URL(window.location.href);
-    baseURL.pathname += "api/";
-    api = new API(baseURL);
+    api.getDeployTargets().then(targets => {
+      targets.forEach((target) => {
+        let targetElement = document.createElement("li");
+        targetElement.innerText = target.Name;
+        if (target.Name === currentTargetName) {
+          currentTargetElement = targetElement;
+          targetElement.classList.add("selected");
+        }
+
+        targetElement.onclick = () => {
+          if (currentTargetName !== null) currentTargetElement.classList.remove("selected");
+          targetElement.classList.add("selected");
+          currentTargetElement = targetElement;
+          currentTargetName = target.Name;
+        };
+
+        targetContainer.appendChild(targetElement);
+      });
+    });
 
     api.getLessons().then(lessons => {
       lessons.forEach((lesson) => {
@@ -149,6 +153,32 @@ require(["vs/editor/editor.main"], function() {
         };
       }
     };
+
+    let toggleRobotSwitcher = () => switcherPopup.classList.toggle("hidden");
+    document.querySelector("#switchRobotButton").onclick = toggleRobotSwitcher;
+    document.querySelector("#closeSwitcherButton").onclick = toggleRobotSwitcher;
+
+    // Helper functions
+    function showErrorPopup(error) {
+      alert(error);
+      console.error(error);
+    }
+
+    function setEditorCodeFromLesson(lessonName) {
+      api.getLessonCode(lessonName).then(code => editor.setValue(code)).catch(showErrorPopup);
+    }
+
+    function saveCode() {
+      if (!needsToSave || currentLessonName === null) return;
+
+      if (currentLessonElement !== null)
+        currentLessonElement.classList.remove("unsaved");
+
+      // A " " looks the same as no form value to the server, so we make an empty editor into whitespace
+      let code = editor.getValue();
+      api.saveLessonCode(currentLessonName, code !== "" ? code : " ").catch(showErrorPopup);
+      needsToSave = false;
+    }
 });
 
 class API {
@@ -198,7 +228,7 @@ class API {
 
   getDeployQueue(target) {
     let url = new URL(this.baseURL);
-    url.pathname += "target/queue";
+    url.pathname += "targets/queue";
     url.searchParams.set("target", target);
 
     return fetch(url, defaultOptions).then(this.handle).then(this.toText);
@@ -211,6 +241,13 @@ class API {
     url.searchParams.set("jobid", jobID);
 
     return fetch(url, defaultOptions).then(this.handle);
+  }
+
+  getDeployTargets() {
+    let url = new URL(this.baseURL);
+    url.pathname += "targets";
+
+    return fetch(url, defaultOptions).then(this.handle).then(this.toJSON);
   }
 
   handle(response) {

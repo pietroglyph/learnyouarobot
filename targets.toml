@@ -2,3 +2,7 @@
 # The target with the name "Dry Run" is a special case that only compiles the code
 Name = "Dry Run"
 Address = "" # Doesn't matter here
+
+[[DeployTarget]]
+Name = "Testbed"
+Address = "10.49.15.2"

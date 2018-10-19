@@ -227,6 +227,16 @@ func handleCancelDeploy(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleGetDeployTargets(w http.ResponseWriter, r *http.Request) {
+	rawJSON, err := json.Marshal(deployTargets)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Write(rawJSON)
+}
+
 func handleGetDeployQueue(w http.ResponseWriter, r *http.Request) {
 	targetName := r.URL.Query().Get("target")
 	if targetName == "" {

@@ -18,8 +18,8 @@ type DeployTarget struct {
 	// The three below fields are assumed to be read-only if we wish to avoid data races
 	Name     string
 	Address  string
-	Jobs     *DeployQueue
-	RobotLog chan string
+	Jobs     *DeployQueue `json:"-"`
+	RobotLog chan string  `json:"-"`
 }
 
 // DeployQueue is a synchronized, readable, and cancellable queue of deploy jobs.

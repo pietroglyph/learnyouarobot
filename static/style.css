@@ -2,6 +2,7 @@
   --lesson-pane-width: 20%;
   --button-row-height: 5%;
   --toggle-run-button-width: 80%;
+  --switcherHeadingWidth: 80%;
 }
 
 body {
@@ -61,7 +62,7 @@ button:active {
   padding: 0px;
 }
 
-.lesson {
+li {
   list-style: none;
   border-bottom: 1px solid grey;
   padding-bottom: 10px;
@@ -69,11 +70,11 @@ button:active {
   padding-left: 15px;
 }
 
-.lesson:hover,.lesson.selected {
+li:hover,li.selected {
   background-color: lightgray;
 }
 
-.lesson:active {
+li:active {
   background-color: grey;
 }
 
@@ -132,14 +133,28 @@ button:active {
 #switcherPopup {
   position: fixed;
   z-index: 100;
-  background-color: lightgray;
+  background-color: white;
   top: 0px;
   left: 0px;
   bottom: 0px;
   right: 0px;
 }
 
+.switcherHeadingContainer {
+  display: flex;
+  flex-direction: row;
+  border-bottom: 1px solid grey;
+}
 
-#deployTargets > td:hover {
-  background-color: darkgrey;
+.switcherHeading {
+  width: var(--switcherHeadingWidth);
+}
+
+#closeSwitcherButton {
+  background-color: blue;
+  width: calc(100% - var(--switcherHeadingWidth))
+}
+
+#deployTargets {
+  width: 100%;
 }

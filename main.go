@@ -81,8 +81,9 @@ func main() {
 	http.HandleFunc("/api/lesson/save", handleSaveLesson)
 	http.HandleFunc("/api/lesson/deploy", handleDeployLesson)
 	http.HandleFunc("/api/lesson/deploy/cancel", handleCancelDeploy)
-	http.HandleFunc("/api/target/queue", handleGetDeployQueue)
-	http.HandleFunc("/api/target/robotlog", handleGetRobotLog)
+	http.HandleFunc("/api/targets", handleGetDeployTargets)
+	http.HandleFunc("/api/targets/queue", handleGetDeployQueue)
+	http.HandleFunc("/api/targets/robotlog", handleGetRobotLog)
 
 	log.Println("Listening on", config.Bind)
 	log.Panicln(http.ListenAndServe(config.Bind, nil))
