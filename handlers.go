@@ -6,10 +6,18 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+)
+
+var (
+	upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+	}
 )
 
 func handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -178,20 +186,46 @@ func handleDeployLesson(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeMessage(conn, job.ID.String())
+	writeMux := sync.Mutex{}
+	writeMux.Lock()
+	// There's very little we can do with this error. If it's a big deal we'll
+	// figure it out in the below goroutine
+	_ = conn.WriteMessage(websocket.TextMessage, []byte(job.ID.String()))
+
+	conn.SetReadDeadline(time.Now().Add(websocketReadTimeout))
+	go func() {
+		ticker := time.NewTicker(websocketReadTimeout / 4)
+		defer func() {
+			// Wait for all output to be sent before closing the connection
+			writeMux.Lock()
+			conn.Close()
+			writeMux.Unlock()
+		}()
+
+		for {
+			<-ticker.C
+
+			select {
+			case <-job.CancelledSignal:
+				return
+			default:
+			}
+			_, _, err = conn.ReadMessage()
+			if err != nil {
+				// Returns an error if the job has ended, but we can safely ignore it
+				_ = target.Jobs.RemoveJob(job.ID)
+				return
+			}
+			conn.SetReadDeadline(time.Now().Add(websocketReadTimeout))
+		}
+	}()
 
 	for line := range job.BuildOutput {
-		writeMessage(conn, line)
+		// There's very little meaningful we can do with the error here, other than
+		// print it, which creates a lot of noise for mundane network errors.
+		_ = conn.WriteMessage(websocket.TextMessage, []byte(line))
 	}
-	conn.Close()
-}
-
-func writeMessage(conn *websocket.Conn, message string) {
-	err := conn.WriteMessage(websocket.TextMessage, []byte(message))
-	if err != nil {
-		log.Println(err)
-		return
-	}
+	writeMux.Unlock()
 }
 
 func handleCancelDeploy(w http.ResponseWriter, r *http.Request) {

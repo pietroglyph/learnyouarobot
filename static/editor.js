@@ -5,6 +5,7 @@ const defaultOptions = {
   credentials: "same-origin"
 };
 const savingRate = 1500;
+const heartbeatSendRate = 1000;
 const RunStatusEnum = Object.freeze({"RUNNING": 1, "WAITING": 2, "STOPPED": 3});
 
 var api;
@@ -19,6 +20,8 @@ var currentTargetName = "Dry Run"
 var currentJobID = null;
 var runStatus = RunStatusEnum.STOPPED;
 var messagesSinceRun = 0;
+var currentSocket = null;
+var currentHeartbeatTimer = null;
 
 require.config({ paths: { "vs": "monaco-editor/min/vs" }});
 require(["vs/editor/editor.main"], function() {
@@ -51,12 +54,13 @@ require(["vs/editor/editor.main"], function() {
         event.preventDefault();
       }
     });
+
     let saveTimer = window.setInterval(saveCode, savingRate);
     editor.model.onDidChangeContent(() => {
       if (currentLessonName !== null) {
         needsToSave = true;
 
-        clearInterval(saveTimer);
+        window.clearInterval(saveTimer);
         saveTimer = window.setInterval(saveCode, savingRate);
 
         if (switchingTabs)
@@ -115,9 +119,7 @@ require(["vs/editor/editor.main"], function() {
     toggleRunButton.onclick = () => {
       messagesSinceRun = 0;
       if (runStatus !== RunStatusEnum.STOPPED) {
-        runStatus = RunStatusEnum.STOPPED;
-        toggleRunButton.innerText = "Run";
-        toggleRunButton.className = "start";
+        resetRun();
 
         if (currentJobID !== null) {
           api.cancelDeploy(currentTargetName, currentJobID);
@@ -133,23 +135,22 @@ require(["vs/editor/editor.main"], function() {
           if (runStatus === RunStatusEnum.WAITING)
             toggleRunButton.innerText = "Waiting (" + queueText + ")...";
         });
-        let socket = api.deploy(currentTargetName, currentLessonName);
-        socket.onmessage = (messageEvent) => {
+
+        currentSocket = api.deploy(currentTargetName, currentLessonName);
+        currentHeartbeatTimer = window.setInterval(() => currentSocket.send(0x0), heartbeatSendRate);
+        currentSocket.onmessage = (messageEvent) => {
           messagesSinceRun++;
           if (messagesSinceRun > 1) {
-            if (runStatus !== RunStatusEnum.WAITING)
-              return;
-
-            toggleRunButton.innerText = "Building and deploying...";
+            toggleRunButton.innerText = "Running...";
+            toggleRunButton.className = "stop";
+            runStatus = RunStatusEnum.RUNNING;
             console.log(messageEvent.data); // TODO
           } else {
             currentJobID = messageEvent.data;
           }
         };
-        socket.onclose = () => {
-          toggleRunButton.innerText = "Running...";
-          toggleRunButton.className = "stop";
-          runStatus = RunStatusEnum.RUNNING;
+        currentSocket.onclose = () => {
+          resetRun();
         };
       }
     };
@@ -159,6 +160,15 @@ require(["vs/editor/editor.main"], function() {
     document.querySelector("#closeSwitcherButton").onclick = toggleRobotSwitcher;
 
     // Helper functions
+    function resetRun() {
+      runStatus = RunStatusEnum.STOPPED;
+      toggleRunButton.innerText = "Run";
+      toggleRunButton.className = "start";
+
+      if (currentHeartbeatTimer !== null) window.clearInterval(currentHeartbeatTimer);
+      if (currentSocket !== null) currentSocket.close()
+    }
+
     function showErrorPopup(error) {
       alert(error);
       console.error(error);

@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/gorilla/websocket"
 	flag "github.com/ogier/pflag"
 )
 
@@ -38,6 +38,8 @@ const (
 
 	dryRunTaskName = "build"
 	deployTaskName = "deploy"
+
+	websocketReadTimeout = 4 * time.Second
 )
 
 var (
@@ -47,11 +49,6 @@ var (
 	deployDirectoryMux sync.Mutex
 	deployTargets      []*DeployTarget
 	config             configuration
-
-	upgrader = websocket.Upgrader{
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
-	}
 )
 
 func main() {

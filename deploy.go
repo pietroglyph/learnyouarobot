@@ -24,7 +24,7 @@ type DeployTarget struct {
 
 // DeployQueue is a synchronized, readable, and cancellable queue of deploy jobs.
 type DeployQueue struct {
-	JobAddedSignal chan bool
+	ModificationSignal chan bool
 
 	lastJob *DeployJob
 	queue   []*DeployJob
@@ -37,7 +37,8 @@ type DeployJob struct {
 	ID     uuid.UUID
 	Lesson *Lesson
 
-	BuildOutput chan string
+	CancelledSignal chan bool
+	BuildOutput     chan string
 }
 
 // Initialize initializes fields that would otherwise be nil when a DeployTarget
@@ -51,7 +52,7 @@ func (t *DeployTarget) Initialize() {
 // a deploy target are run.
 func (t *DeployTarget) KeepJobsRunning() {
 	for {
-		<-t.Jobs.JobAddedSignal
+		<-t.Jobs.ModificationSignal
 		for t.Jobs.IsNewJobReady() {
 			err := t.RunCurrentJob()
 			if err != nil {
@@ -114,12 +115,15 @@ func (t *DeployTarget) RunCurrentJob() error {
 	go job.updateBuildOutputFromReader(io.MultiReader(stdout, stderr))
 
 	err = cmd.Run()
-	if err != nil {
-		return err
-	}
-	// Cancel dry runs once they're done
+
+	// Cancel dry runs immediately after compilation
 	if t.Name == dryRunLessonName {
 		_ = t.Jobs.RemoveJob(job.ID) // We ignore the error because the job may be done
+	}
+
+	_, isExitError := err.(*exec.ExitError)
+	if err != nil && !isExitError {
+		return err
 	}
 	return nil
 }
@@ -128,7 +132,7 @@ func (t *DeployTarget) RunCurrentJob() error {
 // chan will not be made.
 func NewDeployQueue() *DeployQueue {
 	return &DeployQueue{
-		JobAddedSignal: make(chan bool, 1),
+		ModificationSignal: make(chan bool, 1),
 	}
 }
 
@@ -155,6 +159,8 @@ func (q *DeployQueue) RemoveJob(idToRemove uuid.UUID) error {
 		if q.queue[i].ID != idToRemove {
 			continue
 		}
+		q.ModificationSignal <- true
+		q.queue[i].CancelledSignal <- true
 		return q.removeElement(i)
 	}
 	return fmt.Errorf("Couldn't find a job with ID '%s' to remove from deployment queue", idToRemove.String())
@@ -168,17 +174,19 @@ func (q *DeployQueue) AddNewJob(lesson *Lesson) (*DeployJob, error) {
 	}
 
 	job := &DeployJob{
-		ID:          uuid,
-		Lesson:      lesson,
-		BuildOutput: make(chan string, config.ChannelBufferSize),
+		ID:              uuid,
+		Lesson:          lesson,
+		CancelledSignal: make(chan bool, 1),
+		BuildOutput:     make(chan string, config.ChannelBufferSize),
 	}
 
 	q.mux.Lock()
 	q.queue = append(q.queue, job)
 	q.mux.Unlock()
 	select {
-	case q.JobAddedSignal <- true:
-	} // No default case because this job will be consumed if the buffer is already full
+	case q.ModificationSignal <- true:
+	default:
+	}
 	return job, nil
 }
 
@@ -197,11 +205,16 @@ func (q *DeployQueue) CurrentJob() (*DeployJob, error) {
 func (q *DeployQueue) IsNewJobReady() bool {
 	currentJob, _ := q.CurrentJob() // Yes, nil is a valid "next job"
 
-	// We must lock after getting the current job, or we'll cause a deadlock
+	// We must lock _after_ getting the current job, or we'll cause a deadlock
 	q.mux.Lock()
 	defer q.mux.Unlock()
 	jobReady := q.lastJob != currentJob
 	q.lastJob = currentJob
+	if currentJob == nil {
+		// We need to do the above to get everything set up, but if there's no current
+		// job then we don't want to say we're ready
+		jobReady = false
+	}
 	return jobReady
 }
 
@@ -218,8 +231,7 @@ func (q *DeployQueue) removeElement(i int) error {
 func (j *DeployJob) updateBuildOutputFromReader(r io.Reader) {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
-		text := scanner.Text()
-		j.BuildOutput <- text
+		j.BuildOutput <- scanner.Text()
 	}
 	close(j.BuildOutput)
 }
