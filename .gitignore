@@ -12,6 +12,7 @@ static/dist/*.js
 build/.gradle/
 build/build/*
 build/src/main/java/com/spartronics4915/learnyouarobot/*
+!build/gradle/wrapper/gradle-wrapper.jar
 
 # Compiled class file
 *.class
