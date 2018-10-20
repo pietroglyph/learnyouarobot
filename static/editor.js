@@ -43,6 +43,8 @@ require(["vs/editor/editor.main"], function() {
     let switchRobotContainer = document.querySelector("#switcherPopup");
     let toggleRunButton = document.querySelector("#toggleRunButton");
     let targetContainer = document.querySelector("#deployTargets");
+    let outputPopup = document.querySelector("#outputPopup");
+    let outputWell = document.querySelector("#outputWell");
 
     let baseURL = new URL(window.location.href);
     baseURL.pathname += "api/";
@@ -96,6 +98,7 @@ require(["vs/editor/editor.main"], function() {
         li.innerText = lesson.Name;
         li.classList.add("lesson");
         li.onclick = () => {
+          toggleRunButton.disabled = false;
           if (currentLessonElement === li)
             return;
 
@@ -118,6 +121,7 @@ require(["vs/editor/editor.main"], function() {
 
     toggleRunButton.onclick = () => {
       messagesSinceRun = 0;
+      outputWell.innerText = "";
       if (runStatus !== RunStatusEnum.STOPPED) {
         resetRun();
 
@@ -144,9 +148,10 @@ require(["vs/editor/editor.main"], function() {
             toggleRunButton.innerText = "Running...";
             toggleRunButton.className = "stop";
             runStatus = RunStatusEnum.RUNNING;
-            console.log(messageEvent.data); // TODO
+            outputWell.innerText += messageEvent.data + "\n";
           } else {
             currentJobID = messageEvent.data;
+            outputPopup.classList.remove("hidden");
           }
         };
         currentSocket.onclose = () => {
@@ -154,6 +159,9 @@ require(["vs/editor/editor.main"], function() {
         };
       }
     };
+
+    document.querySelector("#closeOutputButton").onclick = () => outputPopup.classList.add("hidden");
+    document.querySelector("#openOutputButton").onclick = () => outputPopup.classList.remove("hidden");
 
     let toggleRobotSwitcher = () => switcherPopup.classList.toggle("hidden");
     document.querySelector("#switchRobotButton").onclick = toggleRobotSwitcher;

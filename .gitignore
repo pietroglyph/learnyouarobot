@@ -2,6 +2,12 @@
 lessons/*
 users/*
 
+# npm stuff
+static/node_modules/*
+
+# Transpiled JS
+static/dist/*.js
+
 # Gradle/build files
 build/.gradle/
 build/build/*
