@@ -72,13 +72,15 @@ func (l *Lesson) SaveCode(code string) error {
 	}
 
 	if l.Modified == false {
-		newLessonFile, err := os.Create(filepath.Join(l.Owner.DataDirectory, l.Name+config.LessonFileSuffix))
+		path := filepath.Join(l.Owner.DataDirectory, l.Name+config.LessonFileSuffix)
+		newLessonFile, err := os.Create(path)
 		if err != nil {
 			return err
 		}
 
 		io.Copy(newLessonFile, l.file)
 		l.file = newLessonFile
+		l.Path = path
 		l.Modified = true
 	}
 

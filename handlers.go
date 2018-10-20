@@ -40,7 +40,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		Expires: time.Now().AddDate(0, 1, 0), // One month from now
 	})
 
-	fmt.Fprint(w, "Login successful.")
+	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 }
 
 func handleGetUserLessons(w http.ResponseWriter, r *http.Request) {

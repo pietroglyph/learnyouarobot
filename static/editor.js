@@ -40,16 +40,17 @@ require(["vs/editor/editor.main"], function() {
 
     // Now that the editor is loaded we'll start dealing with the API and UI
     let lessonContainer = document.querySelector("#lessons");
-    let switchRobotContainer = document.querySelector("#switcherPopup");
     let toggleRunButton = document.querySelector("#toggleRunButton");
     let targetContainer = document.querySelector("#deployTargets");
     let outputPopup = document.querySelector("#outputPopup");
     let outputWell = document.querySelector("#outputWell");
 
+    // Set up the API class
     let baseURL = new URL(window.location.href);
     baseURL.pathname += "api/";
     api = new API(baseURL);
 
+    // Save code when the user presses Ctrl+s
     window.addEventListener("keypress", (event) => {
       if (event.ctrlKey && event.key === "s") {
         saveCode();
@@ -57,6 +58,7 @@ require(["vs/editor/editor.main"], function() {
       }
     });
 
+    // Periodically save unsaved code
     let saveTimer = window.setInterval(saveCode, savingRate);
     editor.model.onDidChangeContent(() => {
       if (currentLessonName !== null) {
@@ -72,6 +74,7 @@ require(["vs/editor/editor.main"], function() {
       }
     });
 
+    // Populate deploy targets pane, and set up switching behavior
     api.getDeployTargets().then(targets => {
       targets.forEach((target) => {
         let targetElement = document.createElement("li");
@@ -92,6 +95,7 @@ require(["vs/editor/editor.main"], function() {
       });
     });
 
+    // Populate lessons pane, and set up switching behavior
     api.getLessons().then(lessons => {
       lessons.forEach((lesson) => {
         let li = document.createElement("li");
@@ -119,9 +123,9 @@ require(["vs/editor/editor.main"], function() {
       });
     }).catch(showErrorPopup);
 
+    // Start/cancel runs on button click, and associated behavior
     toggleRunButton.onclick = () => {
       messagesSinceRun = 0;
-      outputWell.innerText = "";
       if (runStatus !== RunStatusEnum.STOPPED) {
         resetRun();
 
@@ -130,6 +134,7 @@ require(["vs/editor/editor.main"], function() {
         }
       } else if (runStatus === RunStatusEnum.STOPPED) {
         if (currentLessonName === null) return;
+        outputWell.innerText = "";
 
         runStatus = RunStatusEnum.WAITING;
         toggleRunButton.innerText = "Waiting...";
@@ -160,14 +165,16 @@ require(["vs/editor/editor.main"], function() {
       }
     };
 
+    // Open and close the output pane
     document.querySelector("#closeOutputButton").onclick = () => outputPopup.classList.add("hidden");
     document.querySelector("#openOutputButton").onclick = () => outputPopup.classList.remove("hidden");
 
+    // Open and close the target switcher
     let toggleRobotSwitcher = () => switcherPopup.classList.toggle("hidden");
     document.querySelector("#switchRobotButton").onclick = toggleRobotSwitcher;
     document.querySelector("#closeSwitcherButton").onclick = toggleRobotSwitcher;
 
-    // Helper functions
+    // Reset state after a rune (heartbeat timer, websocket, and button)
     function resetRun() {
       runStatus = RunStatusEnum.STOPPED;
       toggleRunButton.innerText = "Run";
@@ -177,15 +184,18 @@ require(["vs/editor/editor.main"], function() {
       if (currentSocket !== null) currentSocket.close()
     }
 
+    // Present the user with an error popup
     function showErrorPopup(error) {
       alert(error);
       console.error(error);
     }
 
+    // Set editor code from a lesson name and handle errors
     function setEditorCodeFromLesson(lessonName) {
       api.getLessonCode(lessonName).then(code => editor.setValue(code)).catch(showErrorPopup);
     }
 
+    // Save code if a lesson is selected, and deal with an empty editor
     function saveCode() {
       if (!needsToSave || currentLessonName === null) return;
 

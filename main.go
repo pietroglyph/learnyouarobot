@@ -40,6 +40,8 @@ const (
 	deployTaskName = "deploy"
 
 	websocketReadTimeout = 4 * time.Second
+
+	lessonName = "Lesson"
 )
 
 var (
