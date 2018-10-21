@@ -1,19 +1,28 @@
 {
   "name": "learnyouarobot",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "An interactive robotics lesson webapp.",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack"
+    "build": "webpack",
+    "watch": "webpack --watch"
   },
   "private": true,
   "keywords": [],
   "author": "",
   "license": "GPLv3",
   "devDependencies": {
+    "css-loader": "^1.0.0",
+    "monaco-editor-webpack-plugin": "^1.5.4",
+    "source-map-loader": "^0.2.4",
+    "style-loader": "^0.23.1",
     "ts-loader": "^5.2.2",
     "typescript": "^3.1.3",
     "webpack": "^4.21.0",
     "webpack-cli": "^3.1.2"
+  },
+  "dependencies": {
+    "monaco-editor": "^0.14.3",
+    "monaco-languageclient": "^0.9.0"
   }
 }

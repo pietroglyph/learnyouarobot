@@ -5,8 +5,8 @@ users/*
 # npm stuff
 static/node_modules/*
 
-# Transpiled JS
-static/dist/*.js
+# Transpiled/Webpacked JS
+static/dist/bundle/*
 
 # Gradle/build files
 build/.gradle/

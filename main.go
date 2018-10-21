@@ -55,7 +55,7 @@ var (
 
 func main() {
 	flag.StringVarP(&config.Bind, "bind", "b", "localhost:8000", "Address to run the webserver on.")
-	flag.StringVarP(&config.StaticDirectory, "static", "s", "static", "Path to static files to serve on /.")
+	flag.StringVarP(&config.StaticDirectory, "static", "s", "static/dist/", "Path to static files to serve on /.")
 	flag.IntVarP(&config.MaxUsers, "max-users", "u", 20, "Maximum number of users.")
 	flag.StringVarP(&config.UserDataDirectory, "user-data", "d", "users", "Path to a folder containing user data folders.")
 	flag.StringVarP(&config.LessonDataDirectory, "lesson-data", "l", "lessons", "Path to a folder containing stock lessons.")
