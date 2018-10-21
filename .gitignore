@@ -1,7 +1,3 @@
-# Program data directories
-lessons/*
-users/*
-
 # npm stuff
 static/node_modules/*
 
@@ -11,7 +7,6 @@ static/dist/bundle/*
 # Gradle/build files
 build/.gradle/
 build/build/*
-build/src/main/java/com/spartronics4915/learnyouarobot/*
 !build/gradle/wrapper/gradle-wrapper.jar
 
 # Compiled class file
