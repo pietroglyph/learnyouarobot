@@ -64,7 +64,18 @@ func (t *DeployTarget) KeepJobsRunning() {
 
 // RunCurrentJob runs the next job and waits for it to complete.
 func (t *DeployTarget) RunCurrentJob() error {
-	job, err := t.Jobs.CurrentJob()
+	var (
+		shouldCancel bool
+		err          error
+		job          *DeployJob
+	)
+	defer func() {
+		if job != nil && (shouldCancel || err != nil) {
+			_ = t.Jobs.RemoveJob(job.ID) // We ignore the error because the job may be done
+		}
+	}()
+
+	job, err = t.Jobs.CurrentJob()
 	if err != nil {
 		return err
 	}
@@ -88,7 +99,7 @@ func (t *DeployTarget) RunCurrentJob() error {
 	}
 
 	taskName := deployTaskName
-	if t.Name == dryRunLessonName {
+	if t.Name == dryRunTargetName {
 		taskName = dryRunTaskName
 	}
 
@@ -116,12 +127,11 @@ func (t *DeployTarget) RunCurrentJob() error {
 
 	err = cmd.Run()
 
-	// Cancel dry runs immediately after compilation
-	if t.Name == dryRunLessonName {
-		_ = t.Jobs.RemoveJob(job.ID) // We ignore the error because the job may be done
+	_, isExitError := err.(*exec.ExitError)
+	if isExitError || t.Name == dryRunTargetName {
+		shouldCancel = true // If the build failed/this is a dry run we immediately cancel the job
 	}
 
-	_, isExitError := err.(*exec.ExitError)
 	if err != nil && !isExitError {
 		return err
 	}

@@ -34,7 +34,7 @@ const (
 
 	deployTargetConfigHeading = "DeployTarget"
 
-	dryRunLessonName = "Dry Run"
+	dryRunTargetName = "Dry Run"
 
 	dryRunTaskName = "build"
 	deployTaskName = "deploy"
