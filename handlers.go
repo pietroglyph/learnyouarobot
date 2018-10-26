@@ -188,9 +188,13 @@ func handleDeployLesson(w http.ResponseWriter, r *http.Request) {
 
 	writeMux := sync.Mutex{}
 	writeMux.Lock()
+	defer writeMux.Unlock()
 	// There's very little we can do with this error. If it's a big deal we'll
 	// figure it out in the below goroutine
-	_ = conn.WriteMessage(websocket.TextMessage, []byte(job.ID.String()))
+	err = conn.WriteMessage(websocket.TextMessage, []byte(job.ID.String()))
+	if err != nil {
+		return
+	}
 
 	conn.SetReadDeadline(time.Now().Add(websocketReadTimeout))
 	go func() {
@@ -221,11 +225,11 @@ func handleDeployLesson(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	for line := range job.BuildOutput {
-		// There's very little meaningful we can do with the error here, other than
-		// print it, which creates a lot of noise for mundane network errors.
-		_ = conn.WriteMessage(websocket.TextMessage, []byte(line))
+		err = conn.WriteMessage(websocket.TextMessage, []byte(line))
+		if err != nil {
+			break
+		}
 	}
-	writeMux.Unlock()
 }
 
 func handleCancelDeploy(w http.ResponseWriter, r *http.Request) {

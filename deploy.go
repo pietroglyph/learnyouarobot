@@ -69,7 +69,9 @@ func (t *DeployTarget) RunCurrentJob() error {
 		err          error
 		job          *DeployJob
 	)
+	deployDirectoryMux.Lock()
 	defer func() {
+		deployDirectoryMux.Unlock()
 		if job != nil && (shouldCancel || err != nil) {
 			_ = t.Jobs.RemoveJob(job.ID) // We ignore the error because the job may be done
 		}
@@ -79,9 +81,6 @@ func (t *DeployTarget) RunCurrentJob() error {
 	if err != nil {
 		return err
 	}
-
-	deployDirectoryMux.Lock()
-	defer deployDirectoryMux.Unlock()
 
 	lessonAbsPath, err := filepath.Abs(job.Lesson.Path)
 	if err != nil {
@@ -169,8 +168,11 @@ func (q *DeployQueue) RemoveJob(idToRemove uuid.UUID) error {
 		if q.queue[i].ID != idToRemove {
 			continue
 		}
-		q.ModificationSignal <- true
-		q.queue[i].CancelledSignal <- true
+		select {
+		case q.ModificationSignal <- true:
+		case q.queue[i].CancelledSignal <- true:
+		default:
+		}
 		return q.removeElement(i)
 	}
 	return fmt.Errorf("Couldn't find a job with ID '%s' to remove from deployment queue", idToRemove.String())
@@ -193,6 +195,7 @@ func (q *DeployQueue) AddNewJob(lesson *Lesson) (*DeployJob, error) {
 	q.mux.Lock()
 	q.queue = append(q.queue, job)
 	q.mux.Unlock()
+
 	select {
 	case q.ModificationSignal <- true:
 	default:
@@ -216,8 +219,8 @@ func (q *DeployQueue) IsNewJobReady() bool {
 	currentJob, _ := q.CurrentJob() // Yes, nil is a valid "next job"
 
 	// We must lock _after_ getting the current job, or we'll cause a deadlock
-	q.mux.Lock()
-	defer q.mux.Unlock()
+	q.mux.RLock()
+	defer q.mux.RUnlock()
 	jobReady := q.lastJob != currentJob
 	q.lastJob = currentJob
 	if currentJob == nil {
@@ -231,6 +234,9 @@ func (q *DeployQueue) IsNewJobReady() bool {
 // Does not synchronize or check if index is in bounds!
 // That's the responsibility of the user.
 func (q *DeployQueue) removeElement(i int) error {
+	if len(q.queue) < i {
+		return fmt.Errorf("Cannot remove out of bounds index %d on a deploy queue", i)
+	}
 	// This magic incantation avoids memory leaks while deleting an element
 	q.queue[i] = q.queue[len(q.queue)-1]
 	q.queue[len(q.queue)-1] = nil

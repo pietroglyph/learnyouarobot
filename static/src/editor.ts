@@ -1,6 +1,6 @@
 // import {
 //   MonacoLanguageClient, CloseAction, ErrorAction,
-//   MonacoServices, createConnection
+//   MonacoServices
 // } from "monaco-languageclient"
 import * as monaco from "monaco-editor"
 import API from "./api"
