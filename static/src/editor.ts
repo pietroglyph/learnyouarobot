@@ -91,7 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (currentTargetName !== null) throwOnNull(currentTargetElement).classList.remove("selected");
         
         // Clear and stop log output
-        if (currentTargetName != target.Name) showBuildOutputButton.click();
+        if (currentTargetName !== target.Name) showBuildOutputButton.click();
         
         targetElement.classList.add("selected");
         currentTargetElement = targetElement;
@@ -178,8 +178,12 @@ document.addEventListener("DOMContentLoaded", () => {
     buildOutputWell.classList.add("hidden");
     logOutputWell.classList.remove("hidden");
 
-    if (currentBuildSocket != null) currentBuildSocket.close();
-    currentBuildSocket = null;
+    if (currentLogSocket == null) {
+      currentLogSocket = api.getLogWebsocket(currentTargetName);
+      currentLogSocket.onmessage = (messageEvent: MessageEvent) => {
+        if (logOutputWell !== null) logOutputWell.innerText += messageEvent.data + "\n";
+      }
+    }
   }
 
   showBuildOutputButton.onclick = () => {
@@ -191,12 +195,8 @@ document.addEventListener("DOMContentLoaded", () => {
     logOutputWell.classList.add("hidden");
     buildOutputWell.classList.remove("hidden");
 
-    if (currentBuildSocket != null) {
-      currentBuildSocket = api.getLogWebsocket(currentTargetName);
-      currentBuildSocket.onmessage = (messageEvent: MessageEvent) => {
-        if (buildOutputWell != null) buildOutputWell.innerText += messageEvent.data + "\n";
-      }
-    }
+    if (currentLogSocket !== null) currentLogSocket.close();
+    currentLogSocket = null;
   }
 
   // Open and close the output pane

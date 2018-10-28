@@ -52,6 +52,9 @@ type RobotLog struct {
 // is unmarshalled in some fashion. This function is not thread-safe.
 func (t *DeployTarget) Initialize() {
 	t.Jobs = NewDeployQueue()
+	t.Log = &RobotLog{
+		updaterOnce: sync.Once{},
+	}
 }
 
 // KeepJobsRunning is a long-running function that makes sure all jobs added to
@@ -272,18 +275,23 @@ func (l *RobotLog) keepUpdated() {
 	path, err := filepath.Abs(filepath.Join(config.BuildDirectory, buildScriptName))
 	if err != nil {
 		log.Println(err)
+		return
 	}
 	cmd := exec.Command(path,
-		"something") // TODO
-	err = cmd.Start()
-	if err != nil {
-		log.Println(err)
-	}
+		"riolog") // TODO
 
 	stdall, err := makeMultiReader(cmd)
 	if err != nil {
 		log.Println(err)
+		return
 	}
+
+	err = cmd.Start()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
 	scanner := bufio.NewScanner(stdall)
 
 	for scanner.Scan() {

@@ -77,7 +77,7 @@ export default class API {
 
     getLogWebsocket(target: string) {
         let url = new URL(this.baseURL);
-        url.pathname += "target/robotlog";
+        url.pathname += "targets/robotlog";
         url.searchParams.set("target", target);
         url.protocol = "ws:";
 
