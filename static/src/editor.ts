@@ -3,10 +3,9 @@
 //   MonacoServices
 // } from "monaco-languageclient"
 import * as monaco from "monaco-editor"
-import API from "./api"
+import API, { HeartbeatingWebSocket } from "./api"
 
 const savingRate = 1500;
-const heartbeatSendRate = 1000;
 const RunStatusEnum = Object.freeze({ "RUNNING": 1, "WAITING": 2, "STOPPED": 3 });
 
 var api: API;
@@ -21,8 +20,8 @@ var currentTargetName = "Dry Run"
 var currentJobID: string | null = null;
 var runStatus = RunStatusEnum.STOPPED;
 var messagesSinceRun = 0;
-var currentSocket: WebSocket | null = null;
-var currentHeartbeatTimer: number | null = null;
+var currentBuildSocket: HeartbeatingWebSocket | null = null;
+var currentLogSocket: HeartbeatingWebSocket | null = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   var editor = monaco.editor.create(safeQuerySelector("#editor"), {
@@ -44,7 +43,10 @@ document.addEventListener("DOMContentLoaded", () => {
   let targetContainer = safeQuerySelector("#deployTargets");
   let switcherPopup = safeQuerySelector("#switcherPopup");
   let outputPopup = safeQuerySelector("#outputPopup");
-  let outputWell = safeQuerySelector("#outputWell");
+  let showBuildOutputButton = safeQuerySelector("#showBuildOutputButton");
+  let showLogOutputButton = safeQuerySelector("#showLogOutputButton");
+  let buildOutputWell = safeQuerySelector("#buildOutput");
+  let logOutputWell = safeQuerySelector("#logOutput");
 
   // Set up the API class
   let baseURL = new URL(window.location.href);
@@ -87,6 +89,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
       targetElement.onclick = () => {
         if (currentTargetName !== null) throwOnNull(currentTargetElement).classList.remove("selected");
+        
+        // Clear and stop log output
+        if (currentTargetName != target.Name) showBuildOutputButton.click();
+        
         targetElement.classList.add("selected");
         currentTargetElement = targetElement;
         currentTargetName = target.Name;
@@ -135,7 +141,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     } else if (runStatus === RunStatusEnum.STOPPED) {
       if (currentLessonName === null) return;
-      outputWell.innerText = "";
+      buildOutputWell.innerText = "";
 
       runStatus = RunStatusEnum.WAITING;
       toggleRunButton.innerText = "Waiting...";
@@ -146,27 +152,52 @@ document.addEventListener("DOMContentLoaded", () => {
           toggleRunButton.innerText = "Waiting (" + queueText + ")...";
       });
 
-      currentSocket = api.deploy(currentTargetName, currentLessonName);
-      currentHeartbeatTimer = window.setInterval(() => {
-        if (currentSocket !== null) currentSocket.send("h")
-      }, heartbeatSendRate);
-      currentSocket.onmessage = (messageEvent) => {
+      currentBuildSocket = api.deploy(currentTargetName, currentLessonName);
+      currentBuildSocket.onmessage = (messageEvent: MessageEvent) => {
         messagesSinceRun++;
         if (messagesSinceRun > 1) {
           toggleRunButton.innerText = "Running...";
           toggleRunButton.className = "stop";
           runStatus = RunStatusEnum.RUNNING;
-          outputWell.innerText += messageEvent.data + "\n";
+          buildOutputWell.innerText += messageEvent.data + "\n";
         } else {
           currentJobID = messageEvent.data;
           outputPopup.classList.remove("hidden");
         }
       };
-      currentSocket.onclose = () => {
+      currentBuildSocket.onclose = () => {
         resetRun();
       };
     }
   };
+
+  showLogOutputButton.onclick = () => {
+    showBuildOutputButton.classList.remove("selected");
+    showLogOutputButton.classList.add("selected");
+
+    buildOutputWell.classList.add("hidden");
+    logOutputWell.classList.remove("hidden");
+
+    if (currentBuildSocket != null) currentBuildSocket.close();
+    currentBuildSocket = null;
+  }
+
+  showBuildOutputButton.onclick = () => {
+    logOutputWell.innerText = "";
+
+    showLogOutputButton.classList.remove("selected");
+    showBuildOutputButton.classList.add("selected");
+
+    logOutputWell.classList.add("hidden");
+    buildOutputWell.classList.remove("hidden");
+
+    if (currentBuildSocket != null) {
+      currentBuildSocket = api.getLogWebsocket(currentTargetName);
+      currentBuildSocket.onmessage = (messageEvent: MessageEvent) => {
+        if (buildOutputWell != null) buildOutputWell.innerText += messageEvent.data + "\n";
+      }
+    }
+  }
 
   // Open and close the output pane
   safeQuerySelector("#closeOutputButton").onclick = () => outputPopup.classList.add("hidden");
@@ -183,8 +214,8 @@ document.addEventListener("DOMContentLoaded", () => {
     toggleRunButton.innerText = "Run";
     toggleRunButton.className = "start";
 
-    if (currentHeartbeatTimer !== null) window.clearInterval(currentHeartbeatTimer);
-    if (currentSocket !== null) currentSocket.close()
+    if (currentBuildSocket !== null) currentBuildSocket.close()
+    currentBuildSocket = null;
   }
 
   function showErrorPopup(error: Error) {

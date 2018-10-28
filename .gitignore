@@ -3,6 +3,7 @@ static/node_modules/*
 
 # Transpiled/Webpacked JS
 static/dist/bundle/*
+static/dist/editor.worker.js
 
 # Gradle/build files
 build/.gradle/

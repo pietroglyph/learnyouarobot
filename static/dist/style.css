@@ -197,12 +197,19 @@ li:active {
   color: white;
 }
 
-#closeOutputButton {
-  margin-left: auto;
+#outputPopup > .heading > button {
   background-color: rgb(50, 50, 50);
 }
 
-#outputWell {
+#outputPopup > .heading > button.selected {
+  background-color: rgb(60, 60, 60);
+}
+
+#closeOutputButton {
+  margin-left: auto;
+}
+
+.outputWell {
   font-family: monospace;
   color: white;
   height: calc(100% - var(--outputPopupHeadingHeight));

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -316,10 +315,26 @@ func handleGetRobotLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for line := range target.RobotLog {
+	conn.SetReadDeadline(time.Now().Add(websocketReadTimeout))
+	go func() {
+		ticker := time.NewTicker(websocketReadTimeout / 4)
+		for {
+			<-ticker.C
+
+			_, _, err = conn.ReadMessage()
+			if err != nil {
+				return
+			}
+			conn.SetReadDeadline(time.Now().Add(websocketReadTimeout))
+		}
+	}()
+
+	output := target.Log.GetOutputChan()
+	for line := range output {
 		err = conn.WriteMessage(websocket.TextMessage, []byte(line))
 		if err != nil {
-			log.Println(err)
+			close(output)
+			conn.Close()
 			return
 		}
 	}

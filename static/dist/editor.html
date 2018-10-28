@@ -1,41 +1,48 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
-    <title>Learn You a Robot</title>
-    <link rel="stylesheet" type="text/css" href="style.css">
-    <script src="bundle/bundle.js"></script>
-  </head>
-  <body>
-    <div class="container">
-      <div id="lessonPane">
-        <h4 class="heading">Lessons:</h4>
-        <hr style="margin: 0px;">
-        <ul id="lessons">
-        </ul>
-        <button id="openOutputButton">Open Output Panel</button>
-      </div>
-      <div class="editorColumn">
-        <div class="buttonRow">
-          <button id="toggleRunButton" class="start" disabled>Run</button>
-          <button id="switchRobotButton">Switch Robot</button>
-        </div>
-        <div id="editor"></div>
-      </div>
-      <div id="outputPopup" class="hidden">
-        <div class="heading">Build Output <button id="closeOutputButton">Close</button></div>
-        <div id="outputWell">
-        </div>
-      </div>
-    </div>
-    <div id="switcherPopup" class="hidden">
-      <div class="headingContainer">
-        <h2 class="heading">Select a robot to deploy to:</h2>
-        <button id="closeSwitcherButton">Close</button>
-      </div>
-      <ul id="deployTargets">
+
+<head>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <title>Learn You a Robot</title>
+  <link rel="stylesheet" type="text/css" href="style.css">
+  <script src="bundle/bundle.js"></script>
+</head>
+
+<body>
+  <div class="container">
+    <div id="lessonPane">
+      <h4 class="heading">Lessons:</h4>
+      <hr style="margin: 0px;">
+      <ul id="lessons">
       </ul>
+      <button id="openOutputButton">Open Output Panel</button>
     </div>
-  </body>
+    <div class="editorColumn">
+      <div class="buttonRow">
+        <button id="toggleRunButton" class="start" disabled>Run</button>
+        <button id="switchRobotButton">Switch Robot</button>
+      </div>
+      <div id="editor"></div>
+    </div>
+    <div id="outputPopup" class="hidden">
+      <div class="heading">
+        <button id="showBuildOutputButton" class="selected">Build Output</button><button id="showLogOutputButton">Log
+          Output</button> <button id="closeOutputButton">Close</button></div>
+      <div id="buildOutput" class="outputWell">
+      </div>
+      <div id="logOutput" class="outputWell hidden">
+      </div>
+    </div>
+  </div>
+  <div id="switcherPopup" class="hidden">
+    <div class="headingContainer">
+      <h2 class="heading">Select a robot to deploy to:</h2>
+      <button id="closeSwitcherButton">Close</button>
+    </div>
+    <ul id="deployTargets">
+    </ul>
+  </div>
+</body>
+
 </html>

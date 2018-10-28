@@ -16,10 +16,10 @@ import (
 // DeployTarget is a named IP address to deploy code to.
 type DeployTarget struct {
 	// The three below fields are assumed to be read-only if we wish to avoid data races
-	Name     string
-	Address  string
-	Jobs     *DeployQueue `json:"-"`
-	RobotLog chan string  `json:"-"`
+	Name    string
+	Address string
+	Jobs    *DeployQueue `json:"-"`
+	Log     *RobotLog    `json:"-"`
 }
 
 // DeployQueue is a synchronized, readable, and cancellable queue of deploy jobs.
@@ -41,11 +41,17 @@ type DeployJob struct {
 	BuildOutput     chan string
 }
 
+// RobotLog allows multiple concurrent reads of a buffer of RIOLog output
+type RobotLog struct {
+	mux         sync.Mutex
+	recievers   []chan string
+	updaterOnce sync.Once
+}
+
 // Initialize initializes fields that would otherwise be nil when a DeployTarget
 // is unmarshalled in some fashion. This function is not thread-safe.
 func (t *DeployTarget) Initialize() {
 	t.Jobs = NewDeployQueue()
-	t.RobotLog = make(chan string, config.ChannelBufferSize)
 }
 
 // KeepJobsRunning is a long-running function that makes sure all jobs added to
@@ -113,16 +119,11 @@ func (t *DeployTarget) RunCurrentJob() error {
 	)
 	cmd.Dir = config.BuildDirectory
 
-	stdout, err := cmd.StdoutPipe()
+	stdall, err := makeMultiReader(cmd)
 	if err != nil {
 		return err
 	}
-	// TODO: Give stderr special formatting
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return err
-	}
-	go job.updateBuildOutputFromReader(io.MultiReader(stdout, stderr))
+	go job.updateBuildOutputFromReader(stdall)
 
 	err = cmd.Run()
 
@@ -250,4 +251,64 @@ func (j *DeployJob) updateBuildOutputFromReader(r io.Reader) {
 		j.BuildOutput <- scanner.Text()
 	}
 	close(j.BuildOutput)
+}
+
+// GetOutputChan gets buffered a channel that will have build output written
+// to it. If it is nor read from, it will be closed. When the consumer is done
+// with the channel, it should be closed.
+func (l *RobotLog) GetOutputChan() chan string {
+	chanToReturn := make(chan string, config.ChannelBufferSize)
+
+	l.mux.Lock()
+	l.recievers = append(l.recievers, chanToReturn)
+	l.mux.Unlock()
+
+	l.updaterOnce.Do(l.keepUpdated)
+
+	return chanToReturn
+}
+
+func (l *RobotLog) keepUpdated() {
+	path, err := filepath.Abs(filepath.Join(config.BuildDirectory, buildScriptName))
+	if err != nil {
+		log.Println(err)
+	}
+	cmd := exec.Command(path,
+		"something") // TODO
+	err = cmd.Start()
+	if err != nil {
+		log.Println(err)
+	}
+
+	stdall, err := makeMultiReader(cmd)
+	if err != nil {
+		log.Println(err)
+	}
+	scanner := bufio.NewScanner(stdall)
+
+	for scanner.Scan() {
+		outputLine := scanner.Text()
+		l.mux.Lock()
+		for i, c := range l.recievers {
+			select {
+			case c <- outputLine:
+			default:
+				l.recievers = append(l.recievers[:i], l.recievers[i+1:]...)
+			}
+		}
+		l.mux.Unlock()
+	}
+}
+
+func makeMultiReader(cmd *exec.Cmd) (io.Reader, error) {
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+	// TODO: Give stderr special formatting
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, err
+	}
+	return io.MultiReader(stdout, stderr), nil
 }

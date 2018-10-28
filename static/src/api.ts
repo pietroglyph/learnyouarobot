@@ -2,21 +2,23 @@ const defaultOptions = {
     method: "GET",
     credentials: "same-origin" as RequestCredentials
 };
+const heartbeatSendRate = 1000;
 
 export default class API {
-    baseURL: string;
+    private baseURL: string;
+
     constructor(baseURL: string) {
         this.baseURL = baseURL;
     }
 
-    getLessons() : Promise<{Name: string, Modified: string, Path: string}[]> {
+    getLessons(): Promise<{ Name: string, Modified: string, Path: string }[]> {
         let url = new URL(this.baseURL);
         url.pathname += "user/lessons";
 
         return fetch(String(url), defaultOptions).then(this.handle).then(this.toJSON);
     }
 
-    getLessonCode(lessonName: string)  : Promise<string> {
+    getLessonCode(lessonName: string): Promise<string> {
         let url = new URL(this.baseURL);
         url.pathname += "lesson/get";
         url.searchParams.set("lesson", lessonName);
@@ -24,7 +26,7 @@ export default class API {
         return fetch(String(url), defaultOptions).then(this.handle).then(this.toText);
     }
 
-    saveLessonCode(lessonName: string, code: string) : Promise<Response> {
+    saveLessonCode(lessonName: string, code: string): Promise<Response> {
         let url = new URL(this.baseURL);
         url.pathname += "lesson/save";
 
@@ -39,17 +41,17 @@ export default class API {
         }).then(this.handle);
     }
 
-    deploy(target: string, lessonName: string)  : WebSocket {
+    deploy(target: string, lessonName: string): HeartbeatingWebSocket {
         let url = new URL(this.baseURL);
         url.pathname += "lesson/deploy";
         url.searchParams.set("target", target);
         url.searchParams.set("lesson", lessonName);
         url.protocol = "ws:";
 
-        return new WebSocket(String(url));
+        return new HeartbeatingWebSocket(String(url));
     }
 
-    getDeployQueue(target: string) : Promise<string> {
+    getDeployQueue(target: string): Promise<string> {
         let url = new URL(this.baseURL);
         url.pathname += "targets/queue";
         url.searchParams.set("target", target);
@@ -57,7 +59,7 @@ export default class API {
         return fetch(String(url), defaultOptions).then(this.handle).then(this.toText);
     }
 
-    cancelDeploy(target: string, jobID: string) : Promise<Response> {
+    cancelDeploy(target: string, jobID: string): Promise<Response> {
         let url = new URL(this.baseURL);
         url.pathname += "lesson/deploy/cancel";
         url.searchParams.set("target", target);
@@ -66,14 +68,23 @@ export default class API {
         return fetch(String(url), defaultOptions).then(this.handle);
     }
 
-    getDeployTargets() : Promise<{Name: string, Address: string}[]> {
+    getDeployTargets(): Promise<{ Name: string, Address: string }[]> {
         let url = new URL(this.baseURL);
         url.pathname += "targets";
 
         return fetch(String(url), defaultOptions).then(this.handle).then(this.toJSON);
     }
 
-    handle(response: Response) : Promise<Response> {
+    getLogWebsocket(target: string) {
+        let url = new URL(this.baseURL);
+        url.pathname += "target/robotlog";
+        url.searchParams.set("target", target);
+        url.protocol = "ws:";
+
+        return new HeartbeatingWebSocket(String(url));
+    }
+
+    handle(response: Response): Promise<Response> {
         let unreadResponse = response.clone();
         return response.text().then((bodyText) => {
             if (!response.ok) throw Error(response.statusText + ": " + bodyText);
@@ -81,11 +92,25 @@ export default class API {
         });
     }
 
-    toJSON(response: Response) : Promise<any> {
+    toJSON(response: Response): Promise<any> {
         return response.json();
     }
 
-    toText(response: Response) : Promise<string> {
+    toText(response: Response): Promise<string> {
         return response.text();
+    }
+}
+
+export class HeartbeatingWebSocket extends WebSocket {
+    private heartbeatTimer: number;
+
+    constructor(url: string, protocols?: string | string[] | undefined) {
+        super(url, protocols);
+        this.heartbeatTimer = window.setInterval(() => this.send("h"), heartbeatSendRate);
+    }
+
+    close(code?: number | undefined, reason?: string | undefined): void {
+        window.clearInterval(this.heartbeatTimer);
+        super.close(code, reason);
     }
 }
