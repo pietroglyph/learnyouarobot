@@ -267,12 +267,12 @@ func (t *DeployTarget) GetLogChan() chan string {
 	t.log.recievers = append(t.log.recievers, chanToReturn)
 	t.log.mux.Unlock()
 
-	t.log.updaterOnce.Do(t.keepUpdated)
+	t.log.updaterOnce.Do(t.keepLogUpdated)
 
 	return chanToReturn
 }
 
-func (t *DeployTarget) keepUpdated() {
+func (t *DeployTarget) keepLogUpdated() {
 	path, err := filepath.Abs(filepath.Join(config.BuildDirectory, buildScriptName))
 	if err != nil {
 		log.Println(err)
@@ -281,7 +281,7 @@ func (t *DeployTarget) keepUpdated() {
 	cmd := exec.Command(path,
 		"riolog",
 		"-PclassName='none'", // Class name needs to be set, but is unused
-		"-ProbotAddress="+t.Address)
+		"-PtargetAddress="+t.Address)
 	cmd.Dir = config.BuildDirectory
 
 	stdall, err := makeMultiReader(cmd)
