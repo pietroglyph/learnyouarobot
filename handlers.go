@@ -329,7 +329,7 @@ func handleGetRobotLog(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	output := target.Log.GetOutputChan()
+	output := target.GetLogChan()
 	for line := range output {
 		err = conn.WriteMessage(websocket.TextMessage, []byte(line))
 		if err != nil {

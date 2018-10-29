@@ -19,7 +19,8 @@ type DeployTarget struct {
 	Name    string
 	Address string
 	Jobs    *DeployQueue `json:"-"`
-	Log     *RobotLog    `json:"-"`
+
+	log *robotLog
 }
 
 // DeployQueue is a synchronized, readable, and cancellable queue of deploy jobs.
@@ -41,8 +42,8 @@ type DeployJob struct {
 	BuildOutput     chan string
 }
 
-// RobotLog allows multiple concurrent reads of a buffer of RIOLog output
-type RobotLog struct {
+// robotLog allows multiple concurrent reads of a buffer of RIO Log output lines via channels
+type robotLog struct {
 	mux         sync.Mutex
 	recievers   []chan string
 	updaterOnce sync.Once
@@ -52,7 +53,7 @@ type RobotLog struct {
 // is unmarshalled in some fashion. This function is not thread-safe.
 func (t *DeployTarget) Initialize() {
 	t.Jobs = NewDeployQueue()
-	t.Log = &RobotLog{
+	t.log = &robotLog{
 		updaterOnce: sync.Once{},
 	}
 }
@@ -256,29 +257,32 @@ func (j *DeployJob) updateBuildOutputFromReader(r io.Reader) {
 	close(j.BuildOutput)
 }
 
-// GetOutputChan gets buffered a channel that will have build output written
+// GetLogChan gets buffered a channel that will have build output written
 // to it. If it is nor read from, it will be closed. When the consumer is done
 // with the channel, it should be closed.
-func (l *RobotLog) GetOutputChan() chan string {
+func (t *DeployTarget) GetLogChan() chan string {
 	chanToReturn := make(chan string, config.ChannelBufferSize)
 
-	l.mux.Lock()
-	l.recievers = append(l.recievers, chanToReturn)
-	l.mux.Unlock()
+	t.log.mux.Lock()
+	t.log.recievers = append(t.log.recievers, chanToReturn)
+	t.log.mux.Unlock()
 
-	l.updaterOnce.Do(l.keepUpdated)
+	t.log.updaterOnce.Do(t.keepUpdated)
 
 	return chanToReturn
 }
 
-func (l *RobotLog) keepUpdated() {
+func (t *DeployTarget) keepUpdated() {
 	path, err := filepath.Abs(filepath.Join(config.BuildDirectory, buildScriptName))
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	cmd := exec.Command(path,
-		"riolog") // TODO
+		"riolog",
+		"-PclassName='none'", // Class name needs to be set, but is unused
+		"-ProbotAddress="+t.Address)
+	cmd.Dir = config.BuildDirectory
 
 	stdall, err := makeMultiReader(cmd)
 	if err != nil {
@@ -296,15 +300,15 @@ func (l *RobotLog) keepUpdated() {
 
 	for scanner.Scan() {
 		outputLine := scanner.Text()
-		l.mux.Lock()
-		for i, c := range l.recievers {
+		t.log.mux.Lock()
+		for i, c := range t.log.recievers {
 			select {
 			case c <- outputLine:
 			default:
-				l.recievers = append(l.recievers[:i], l.recievers[i+1:]...)
+				t.log.recievers = append(t.log.recievers[:i], t.log.recievers[i+1:]...)
 			}
 		}
-		l.mux.Unlock()
+		t.log.mux.Unlock()
 	}
 }
 

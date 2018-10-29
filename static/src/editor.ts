@@ -89,10 +89,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
       targetElement.onclick = () => {
         if (currentTargetName !== null) throwOnNull(currentTargetElement).classList.remove("selected");
-        
+
         // Clear and stop log output
         if (currentTargetName !== target.Name) showBuildOutputButton.click();
-        
+
         targetElement.classList.add("selected");
         currentTargetElement = targetElement;
         currentTargetName = target.Name;
@@ -187,8 +187,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   showBuildOutputButton.onclick = () => {
-    logOutputWell.innerText = "";
-
     showLogOutputButton.classList.remove("selected");
     showBuildOutputButton.classList.add("selected");
 
