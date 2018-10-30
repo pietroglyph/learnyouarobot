@@ -6,6 +6,7 @@ import * as monaco from "monaco-editor"
 import API, { HeartbeatingWebSocket } from "./api"
 
 const savingRate = 1500;
+const dryRunName = "Dry Run";
 const RunStatusEnum = Object.freeze({ "RUNNING": 1, "WAITING": 2, "STOPPED": 3 });
 
 var api: API;
@@ -16,7 +17,7 @@ var currentLessonName: string | null = null;
 var currentLessonElement: HTMLElement | null = null;
 
 var currentTargetElement: HTMLElement | null = null;
-var currentTargetName = "Dry Run"
+var currentTargetName = dryRunName;
 var currentJobID: string | null = null;
 var runStatus = RunStatusEnum.STOPPED;
 var messagesSinceRun = 0;
@@ -90,8 +91,13 @@ document.addEventListener("DOMContentLoaded", () => {
       targetElement.onclick = () => {
         if (currentTargetName !== null) throwOnNull(currentTargetElement).classList.remove("selected");
 
-        // Clear and stop log output
-        if (currentTargetName !== target.Name) showBuildOutputButton.click();
+        if (currentTargetName !== target.Name) {
+          showBuildOutputButton.click(); // Clear and stop log output
+          logOutputWell.innerText = "";
+        }
+
+        if (target.Name === dryRunName) showLogOutputButton.setAttribute("disabled", "true");
+        else showLogOutputButton.removeAttribute("disabled");
 
         targetElement.classList.add("selected");
         currentTargetElement = targetElement;
@@ -109,7 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
       li.innerText = lesson.Name;
       li.classList.add("lesson");
       li.onclick = () => {
-        toggleRunButton.attributes.removeNamedItem("disabled");
+        toggleRunButton.removeAttribute("disabled");
         if (currentLessonElement === li)
           return;
 
@@ -183,6 +189,7 @@ document.addEventListener("DOMContentLoaded", () => {
       currentLogSocket.onmessage = (messageEvent: MessageEvent) => {
         if (logOutputWell !== null) logOutputWell.innerText += messageEvent.data + "\n";
       }
+      currentLogSocket.onerror = () => showErrorPopup(new Error("Log websocket error."))
     }
   }
 

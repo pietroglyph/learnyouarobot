@@ -36,7 +36,6 @@ button:active:enabled {
 }
 
 button:disabled {
-  background-color: lightgray !important;
   cursor: not-allowed;
 }
 
@@ -144,6 +143,10 @@ li:active {
   background-color: lightgray;
 }
 
+#toggleRunButton:disabled {
+  background-color: lightgray !important;
+}
+
 /* Switcher popup */
 #switcherPopup {
   position: fixed;
@@ -203,6 +206,10 @@ li:active {
 
 #outputPopup > .heading > button.selected {
   background-color: rgb(60, 60, 60);
+}
+
+#showLogOutputButton:disabled {
+  background-color: rgb(40, 40, 40);
 }
 
 #closeOutputButton {

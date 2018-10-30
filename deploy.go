@@ -267,7 +267,7 @@ func (t *DeployTarget) GetLogChan() chan string {
 	t.log.recievers = append(t.log.recievers, chanToReturn)
 	t.log.mux.Unlock()
 
-	t.log.updaterOnce.Do(t.keepLogUpdated)
+	go t.log.updaterOnce.Do(t.keepLogUpdated)
 
 	return chanToReturn
 }
@@ -281,7 +281,8 @@ func (t *DeployTarget) keepLogUpdated() {
 	cmd := exec.Command(path,
 		"riolog",
 		"-PclassName='none'", // Class name needs to be set, but is unused
-		"-PtargetAddress="+t.Address)
+		"-PtargetAddress="+t.Address,
+		"--console=plain")
 	cmd.Dir = config.BuildDirectory
 
 	stdall, err := makeMultiReader(cmd)
