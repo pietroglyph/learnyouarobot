@@ -189,8 +189,7 @@ func handleDeployLesson(w http.ResponseWriter, r *http.Request) {
 	writeMux := sync.Mutex{}
 	writeMux.Lock()
 	defer writeMux.Unlock()
-	// There's very little we can do with this error. If it's a big deal we'll
-	// figure it out in the below goroutine
+
 	err = conn.WriteMessage(websocket.TextMessage, []byte(job.ID.String()))
 	if err != nil {
 		return
@@ -340,4 +339,5 @@ func handleGetRobotLog(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	conn.Close()
 }

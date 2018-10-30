@@ -165,7 +165,10 @@ document.addEventListener("DOMContentLoaded", () => {
           toggleRunButton.innerText = "Running...";
           toggleRunButton.className = "stop";
           runStatus = RunStatusEnum.RUNNING;
+          
+          let shouldStick = isBottomScrolled(logOutputWell);
           buildOutputWell.innerText += messageEvent.data + "\n";
+          if (shouldStick) keepSticky(buildOutputWell);
         } else {
           currentJobID = messageEvent.data;
           outputPopup.classList.remove("hidden");
@@ -187,7 +190,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (currentLogSocket == null) {
       currentLogSocket = api.getLogWebsocket(currentTargetName);
       currentLogSocket.onmessage = (messageEvent: MessageEvent) => {
-        if (logOutputWell !== null) logOutputWell.innerText += messageEvent.data + "\n";
+        let shouldStick = isBottomScrolled(logOutputWell);
+        if (logOutputWell !== null) logOutputWell.innerText += messageEvent.data + "\n"; 
+        if (shouldStick) keepSticky(logOutputWell);
       }
       currentLogSocket.onerror = () => showErrorPopup(new Error("Log websocket error."))
     }
@@ -244,6 +249,14 @@ document.addEventListener("DOMContentLoaded", () => {
     let code = editor.getValue();
     api.saveLessonCode(currentLessonName, code !== "" ? code : " ").catch(showErrorPopup);
     needsToSave = false;
+  }
+
+  function isBottomScrolled(outputWell: HTMLElement) : boolean {
+    return outputWell.scrollHeight - outputWell.clientHeight <= outputWell.scrollTop + 1;
+  }
+
+  function keepSticky(outputWell: HTMLElement) {
+    outputWell.scrollTop = outputWell.scrollHeight - outputWell.clientHeight;
   }
 
   function safeQuerySelector(selector: string): HTMLElement {
