@@ -11,7 +11,6 @@ body {
   width: 100%;
   height: 100vh;
   margin: 0px;
-  overflow: hidden;
 }
 
 /*
@@ -46,7 +45,6 @@ button:disabled {
   width: 100%;
   height: 100%;
   margin: 0px;
-  overflow: hidden;
 }
 
 #lessonPane {
@@ -113,6 +111,7 @@ li:active {
 #editor {
   height: 100%;
   width: 100%;
+  overflow: hidden;
 }
 
 .buttonRow {

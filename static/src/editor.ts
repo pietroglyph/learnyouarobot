@@ -55,10 +55,12 @@ document.addEventListener("DOMContentLoaded", () => {
   api = new API(String(baseURL));
 
   // Save code when the user presses Ctrl+s
-  window.addEventListener("keypress", (event) => {
+  window.addEventListener("keydown", (event) => {
     if (event.ctrlKey && event.key === "s") {
       saveCode();
       event.preventDefault();
+      event.stopPropagation();
+      return false;
     }
   });
 

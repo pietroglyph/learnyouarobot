@@ -120,6 +120,7 @@ func (t *DeployTarget) RunCurrentJob() error {
 		taskName,
 		"-PtargetAddress="+t.Address,
 		"-PclassName="+lessonName,
+		"--console=plain",
 	)
 	cmd.Dir = config.BuildDirectory
 
@@ -236,7 +237,7 @@ func (q *DeployQueue) IsNewJobReady() bool {
 	return jobReady
 }
 
-// Does not synchronize or check if index is in bounds!
+// Does not synchronize!
 // That's the responsibility of the user.
 func (q *DeployQueue) removeElement(i int) error {
 	if len(q.queue) < i {
@@ -282,6 +283,7 @@ func (t *DeployTarget) keepLogUpdated() {
 		"riolog",
 		"-PclassName='none'", // Class name needs to be set, but is unused
 		"-PtargetAddress="+t.Address,
+		"--quiet",
 		"--console=plain")
 	cmd.Dir = config.BuildDirectory
 
