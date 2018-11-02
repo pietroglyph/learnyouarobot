@@ -72,7 +72,7 @@ func (t *DeployTarget) KeepJobsRunning() {
 	}
 }
 
-// RunCurrentJob runs the next job and waits for it to complete.
+// RunCurrentJob runs the last job in the queue and waits for it to complete.
 func (t *DeployTarget) RunCurrentJob() error {
 	var (
 		shouldCancel bool
@@ -216,7 +216,7 @@ func (q *DeployQueue) CurrentJob() (*DeployJob, error) {
 	if len(q.queue) < 1 {
 		return nil, fmt.Errorf("Deployment queue is empty")
 	}
-	return q.queue[0], nil
+	return q.queue[len(q.queue)-1], nil
 }
 
 // IsNewJobReady checks if a *DeployQueue has any jobs in a thread-safe fashion.
