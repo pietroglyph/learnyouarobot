@@ -83,6 +83,7 @@ li {
   padding-bottom: 10px;
   padding-top: 10px;
   padding-left: 15px;
+  cursor: default;
 }
 
 li:hover,li.selected {

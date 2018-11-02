@@ -216,7 +216,7 @@ func (q *DeployQueue) CurrentJob() (*DeployJob, error) {
 	if len(q.queue) < 1 {
 		return nil, fmt.Errorf("Deployment queue is empty")
 	}
-	return q.queue[len(q.queue)-1], nil
+	return q.queue[0], nil
 }
 
 // IsNewJobReady checks if a *DeployQueue has any jobs in a thread-safe fashion.
@@ -243,8 +243,8 @@ func (q *DeployQueue) removeElement(i int) error {
 		return fmt.Errorf("Cannot remove out of bounds index %d on a deploy queue", i)
 	}
 	// This magic incantation avoids memory leaks while deleting an element
-	q.queue[i] = q.queue[len(q.queue)-1]
-	q.queue[len(q.queue)-1] = nil
+	copy(q.queue[i:], q.queue[i+1:])
+	q.queue[len(q.queue)-1] = nil // or the zero vq.queuelue of T
 	q.queue = q.queue[:len(q.queue)-1]
 	return nil
 }

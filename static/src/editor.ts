@@ -153,12 +153,15 @@ document.addEventListener("DOMContentLoaded", () => {
       toggleRunButton.innerText = "Waiting...";
       toggleRunButton.className = "waiting";
 
-      api.getDeployQueue(currentTargetName).then((queueText) => {
-        if (runStatus === RunStatusEnum.WAITING)
-          toggleRunButton.innerText = "Waiting (" + queueText + ")...";
-      });
-
       currentBuildSocket = api.deploy(currentTargetName, currentLessonName);
+      currentBuildSocket.onopen = () => {
+        // Wait until the websocket is opened so that we don't get queue contents
+        // before our job has been added
+        api.getDeployQueue(currentTargetName).then((queueText) => {
+          if (runStatus === RunStatusEnum.WAITING)
+            toggleRunButton.innerText = "Waiting (" + queueText + ")...";
+        });
+      }
       currentBuildSocket.onmessage = (messageEvent: MessageEvent) => {
         messagesSinceRun++;
         if (messagesSinceRun > 1) {
