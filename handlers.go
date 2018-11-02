@@ -210,6 +210,7 @@ func handleDeployLesson(w http.ResponseWriter, r *http.Request) {
 
 			select {
 			case <-job.CancelledSignal:
+				close(job.CancelledSignal)
 				return
 			default:
 			}

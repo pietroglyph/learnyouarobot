@@ -175,9 +175,9 @@ func (q *DeployQueue) RemoveJob(idToRemove uuid.UUID) error {
 		}
 		select {
 		case q.ModificationSignal <- true:
-		case q.queue[i].CancelledSignal <- true:
 		default:
 		}
+		q.queue[i].CancelledSignal <- true
 		return q.removeElement(i)
 	}
 	return fmt.Errorf("Couldn't find a job with ID '%s' to remove from deployment queue", idToRemove.String())
