@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 // Lesson contains a lesson name, if it was modified, and its owner (which can be
@@ -31,10 +30,10 @@ func NewLessons() Lessons {
 
 // NewLesson makes a new lesson from a fileName and directory path. The user
 // must set if the lesson has been modified or not!
-func NewLesson(fileName string, directory string) (*Lesson, error) {
+func NewLesson(name string, path string) (*Lesson, error) {
 	lesson := &Lesson{
-		Name: strings.TrimSuffix(fileName, config.LessonFileSuffix),
-		Path: filepath.Join(directory, fileName),
+		Name: name,
+		Path: path,
 		// Modified should be set by the user!
 	}
 
@@ -72,7 +71,8 @@ func (l *Lesson) SaveCode(code string) error {
 	}
 
 	if l.Modified == false {
-		path := filepath.Join(l.Owner.DataDirectory, l.Name+config.LessonFileSuffix)
+		_, filename := filepath.Split(l.Path)
+		path := filepath.Join(l.Owner.DataDirectory, filename)
 		newLessonFile, err := os.Create(path)
 		if err != nil {
 			return err

@@ -50,13 +50,13 @@ func handleGetUserLessons(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lessons, err := user.Lessons()
+	lessons, err := user.LessonSlice()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	jsonData, err := json.Marshal(lessons.Slice())
+	jsonData, err := json.Marshal(lessons)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -78,15 +78,9 @@ func handleGetLesson(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lessons, err := user.Lessons()
+	lesson, err := user.GetLesson(lessonName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	lesson, exists := lessons[lessonName]
-	if !exists {
-		http.Error(w, "Lesson "+lessonName+" doesn't exist", http.StatusBadRequest)
 		return
 	}
 
@@ -112,15 +106,9 @@ func handleSaveLesson(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lessons, err := user.Lessons()
+	lesson, err := user.GetLesson(lessonName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	lesson, exists := lessons[lessonName]
-	if !exists {
-		http.Error(w, "no lesson by the name '"+lessonName+"' exists", http.StatusBadRequest)
 		return
 	}
 
@@ -150,15 +138,9 @@ func handleDeployLesson(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lessons, err := user.Lessons()
+	lesson, err := user.GetLesson(lessonName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	lesson, exists := lessons[lessonName]
-	if !exists {
-		http.Error(w, "User "+user.Name+" doesn't have a lesson by name "+lessonName, http.StatusBadRequest)
 		return
 	}
 

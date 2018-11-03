@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strings"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -16,7 +16,7 @@ type configuration struct {
 	Bind                   string
 	StaticDirectory        string
 	UserDataDirectory      string
-	LessonDataDirectory    string
+	LessonConfigPath       string
 	DeployTargetConfigPath string
 	BuildDirectory         string
 	LessonFileSuffix       string
@@ -33,6 +33,7 @@ const (
 	srcSubDirectory = "src/main/java/com/spartronics4915/learnyouarobot"
 
 	deployTargetConfigHeading = "DeployTarget"
+	lessonConfigHeading       = "Lesson"
 
 	dryRunTargetName = "Dry Run"
 
@@ -41,7 +42,7 @@ const (
 
 	websocketReadTimeout = 4 * time.Second
 
-	lessonName = "Lesson"
+	lessonClassName = "Lesson"
 )
 
 var (
@@ -58,7 +59,7 @@ func main() {
 	flag.StringVarP(&config.StaticDirectory, "static", "s", "static/dist/", "Path to static files to serve on /.")
 	flag.IntVarP(&config.MaxUsers, "max-users", "u", 20, "Maximum number of users.")
 	flag.StringVarP(&config.UserDataDirectory, "user-data", "d", "users", "Path to a folder containing user data folders.")
-	flag.StringVarP(&config.LessonDataDirectory, "lesson-data", "l", "lessons", "Path to a folder containing stock lessons.")
+	flag.StringVarP(&config.LessonConfigPath, "lesson-config", "l", "lessons.toml", "Path to a toml file defining lessons and their names.")
 	flag.StringVar(&config.LessonFileSuffix, "lesson-suffix", ".java", "Suffix of lesson files. Anything before this will be the name of the lesson.")
 	flag.IntVar(&config.ChannelBufferSize, "msgbuf-size", 1e4, "Size of message buffers, in lines.")
 	flag.StringVarP(&config.BuildDirectory, "build-directory", "B", "build", "Path to a folder containing build scripts, and the following directory structure:\n"+srcSubDirectory+".")
@@ -69,7 +70,7 @@ func main() {
 		MaxUsers: config.MaxUsers,
 	}
 
-	makeStockLessons()
+	loadStockLessons()
 	loadUsers()
 	loadDeployTargets()
 
@@ -91,14 +92,14 @@ func main() {
 func loadDeployTargets() {
 	targetConfigBytes, err := ioutil.ReadFile(config.DeployTargetConfigPath)
 	if err != nil {
-		log.Panic(err)
+		log.Panicln(err)
 	}
 
 	// We do this because we use an array of tables in the TOML file
 	var rawValues map[string][]*DeployTarget
 	err = toml.Unmarshal(targetConfigBytes, &rawValues)
 	if err != nil {
-		log.Panic(err)
+		log.Panicln(err)
 	}
 	deployTargets = rawValues[deployTargetConfigHeading]
 	for _, t := range deployTargets {
@@ -112,7 +113,7 @@ func loadDeployTargets() {
 func loadUsers() {
 	userDataDirs, err := ioutil.ReadDir(config.UserDataDirectory)
 	if err != nil {
-		log.Panic(err)
+		log.Panicln(err)
 	}
 
 	for _, file := range userDataDirs {
@@ -130,27 +131,38 @@ func loadUsers() {
 	log.Println("Loaded", users.NumUsers(), "preexisting users.")
 }
 
-func makeStockLessons() {
+func loadStockLessons() {
 	stockLessons = NewLessons()
 
-	stockLessonFiles, err := ioutil.ReadDir(config.LessonDataDirectory)
+	lessonConfigBytes, err := ioutil.ReadFile(config.LessonConfigPath)
 	if err != nil {
-		log.Panicln(err.Error())
+		log.Panicln(err)
 	}
-	for _, file := range stockLessonFiles {
-		fileName := file.Name()
-		if !strings.HasSuffix(fileName, config.LessonFileSuffix) {
-			continue
-		}
 
-		lesson, err := NewLesson(fileName, config.LessonDataDirectory)
+	type basicLessonInfo struct {
+		Name string
+		Path string
+	}
+
+	var rawValues map[string][]basicLessonInfo
+	err = toml.Unmarshal(lessonConfigBytes, &rawValues)
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	for _, lessonInfo := range rawValues[lessonConfigHeading] {
+		lessonInfo.Path = filepath.Join(filepath.Dir(config.LessonConfigPath), lessonInfo.Path)
+
+		lesson, err := NewLesson(lessonInfo.Name, lessonInfo.Path)
 		if err != nil {
-			log.Panicln(err.Error())
+			log.Panicln(err)
 		}
 		lesson.Modified = false
 
-		stockLessons[lesson.Name] = lesson
+		_, fileName := filepath.Split(lesson.Path)
+		stockLessons[fileName] = lesson
 	}
+	log.Println("Loaded", len(stockLessons), "stock lessons.")
 }
 
 func indexSwitcher(h http.Handler) http.Handler {

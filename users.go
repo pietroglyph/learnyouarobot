@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 )
@@ -17,7 +16,10 @@ type User struct {
 	LastActive    time.Time
 	DataDirectory string
 
-	lessons Lessons // Will be populated on first call to Lessons
+	// Lessons doesn't own this mutex because sometimes access to lessons doesn't need synchronization
+	lessonsMux sync.Mutex
+	// Populated on first call to GetLesson
+	lessons Lessons
 }
 
 // Users is a strut that provides a set of thread-safe functions to manipulate
@@ -81,12 +83,50 @@ func (u *Users) NumUsers() int {
 	return len(u.array)
 }
 
-// Lessons gets all the user's Lessons -- modified or not
-func (u *User) Lessons() (Lessons, error) {
+// XXX: User has a lot of methods that might be able to only concern Lesson, if
+// we do a bit of refactoring.
+
+// GetLesson gets a user's lesson by name (not filename). It synchronizes and
+// updates the underlying lessons map if needed.
+func (u *User) GetLesson(name string) (*Lesson, error) {
+	err := u.updateLessons()
+	if err != nil {
+		return nil, err
+	}
+
+	u.lessonsMux.Lock()
+	defer u.lessonsMux.Unlock()
+	for _, lesson := range u.lessons {
+		if lesson.Name == name {
+			return lesson, nil
+		}
+	}
+	return nil, fmt.Errorf("Lesson %s doesn't exist", name)
+}
+
+// LessonSlice returns a new slice of the underlying user lessons array. This is
+// needed along with Lesson.Slice() because this synchronizes and updates the
+// underlying Lessons map.
+func (u *User) LessonSlice() ([]*Lesson, error) {
+	err := u.updateLessons()
+	if err != nil {
+		return nil, err
+	}
+
+	u.lessonsMux.Lock()
+	defer u.lessonsMux.Unlock()
+	return u.lessons.Slice(), nil
+}
+
+// lessons gets all the user's Lessons -- modified or not.
+func (u *User) updateLessons() error {
 	// Server must be restarted to read new lessons
 	if len(u.lessons) > 0 {
-		return u.lessons, nil
+		return nil
 	}
+
+	u.lessonsMux.Lock()
+	defer u.lessonsMux.Unlock()
 
 	for k, v := range stockLessons {
 		newLesson := *v
@@ -98,24 +138,29 @@ func (u *User) Lessons() (Lessons, error) {
 
 	lessonFiles, err := ioutil.ReadDir(userDir)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	for _, file := range lessonFiles {
 		fileName := file.Name()
-		lesson, err := NewLesson(fileName, userDir)
+		lessonName := fileName
+		if sl, ok := stockLessons[fileName]; ok {
+			lessonName = sl.Name
+		}
+
+		lesson, err := NewLesson(lessonName, filepath.Join(userDir, fileName))
 		if err != nil {
-			return nil, err
+			return err
 		}
 		lesson.Modified = true
 		lesson.Owner = u
 
-		u.lessons[strings.TrimSuffix(fileName, config.LessonFileSuffix)] = lesson
+		u.lessons[fileName] = lesson
 	}
 
 	// We return a copy of u.lessons, so we don't worry about data races on map access,
 	// just data races on the underlying *Lesson.
-	return u.lessons, nil
+	return nil
 }
 
 // GetCurrentUser gets the current user from an http request, or returns an error

@@ -96,7 +96,7 @@ func (t *DeployTarget) RunCurrentJob() error {
 	if err != nil {
 		return err
 	}
-	symlinkPath := filepath.Join(config.BuildDirectory, srcSubDirectory, lessonName+config.LessonFileSuffix)
+	symlinkPath := filepath.Join(config.BuildDirectory, srcSubDirectory, lessonClassName+config.LessonFileSuffix)
 
 	err = os.Remove(symlinkPath)
 	if err != nil && !os.IsNotExist(err) {
@@ -119,7 +119,7 @@ func (t *DeployTarget) RunCurrentJob() error {
 	cmd := exec.Command(path,
 		taskName,
 		"-PtargetAddress="+t.Address,
-		"-PclassName="+lessonName,
+		"-PclassName="+lessonClassName,
 		"--console=plain",
 	)
 	cmd.Dir = config.BuildDirectory
