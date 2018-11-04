@@ -45,8 +45,14 @@ type DeployJob struct {
 // robotLog allows multiple concurrent reads of a buffer of RIO Log output lines via channels
 type robotLog struct {
 	mux         sync.Mutex
-	recievers   []chan string
+	recievers   []logChan
 	updaterOnce sync.Once
+}
+
+// logChan holds a buffered channel of log lines, and buffer size 1 channel for closing
+type logChan struct {
+	Output chan string
+	Done   chan bool
 }
 
 // Initialize initializes fields that would otherwise be nil when a DeployTarget
@@ -259,18 +265,22 @@ func (j *DeployJob) updateBuildOutputFromReader(r io.Reader) {
 }
 
 // GetLogChan gets buffered a channel that will have build output written
-// to it. If it is nor read from, it will be closed. When the consumer is done
-// with the channel, it should be closed.
-func (t *DeployTarget) GetLogChan() chan string {
-	chanToReturn := make(chan string, config.ChannelBufferSize)
+// to it. If it is not read from, it will be closed. When the consumer is done
+// with the channel, they should send true on the second returned channel.
+func (t *DeployTarget) GetLogChan() (text chan string, done chan bool) {
+	text = make(chan string, config.ChannelBufferSize)
+	done = make(chan bool, 1)
 
 	t.log.mux.Lock()
-	t.log.recievers = append(t.log.recievers, chanToReturn)
+	t.log.recievers = append(t.log.recievers, logChan{
+		Output: text,
+		Done:   done,
+	})
 	t.log.mux.Unlock()
 
 	go t.log.updaterOnce.Do(t.keepLogUpdated)
 
-	return chanToReturn
+	return
 }
 
 func (t *DeployTarget) keepLogUpdated() {
@@ -306,9 +316,13 @@ func (t *DeployTarget) keepLogUpdated() {
 		t.log.mux.Lock()
 		for i, c := range t.log.recievers {
 			select {
-			case c <- outputLine:
-			default:
+			case c.Output <- outputLine:
+			case <-c.Done:
+				// Remove this reciever on done signal
 				t.log.recievers = append(t.log.recievers[:i], t.log.recievers[i+1:]...)
+				close(c.Output)
+				close(c.Done)
+			default:
 			}
 		}
 		t.log.mux.Unlock()

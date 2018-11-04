@@ -7,8 +7,8 @@ plugins {
 
 if (!project.hasProperty("className"))
   throw new InvalidUserDataException("Please specify a class name to build -PclassName.");
-  if (!project.hasProperty("targetAddress"))
-    throw new InvalidUserDataException("Please specify a deploy target with -PtargetAddress.");
+if (!project.hasProperty("targetAddress"))
+  throw new InvalidUserDataException("Please specify a deploy target with -PtargetAddress.");
 
 def TEAM = 4915
 def ROBOT_CLASS = "com.spartronics4915.learnyouarobot."
