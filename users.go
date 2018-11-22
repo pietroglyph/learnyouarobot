@@ -144,8 +144,10 @@ func (u *User) updateLessons() error {
 	for _, file := range lessonFiles {
 		fileName := file.Name()
 		lessonName := fileName
+		alternateRobotPath := ""
 		if sl, ok := stockLessons[fileName]; ok {
 			lessonName = sl.Name
+			alternateRobotPath = sl.AlternateRobotPath
 		}
 
 		lesson, err := NewLesson(lessonName, filepath.Join(userDir, fileName))
@@ -154,6 +156,7 @@ func (u *User) updateLessons() error {
 		}
 		lesson.Modified = true
 		lesson.Owner = u
+		lesson.AlternateRobotPath = alternateRobotPath
 
 		u.lessons[fileName] = lesson
 	}

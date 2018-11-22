@@ -13,8 +13,9 @@ type Lesson struct {
 	Name     string
 	Modified bool
 	// Not included in JSON
-	Owner *User `json:"-"`
-	Path  string
+	Owner              *User  `json:"-"`
+	Path               string `json:"-"`
+	AlternateRobotPath string `json:"-"`
 
 	file *os.File
 }

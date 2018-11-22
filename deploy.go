@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/google/uuid"
@@ -113,6 +114,22 @@ func (t *DeployTarget) RunCurrentJob() error {
 		return err
 	}
 
+	alternateRobotSymlinkPath := filepath.Join(config.BuildDirectory, srcSubDirectory, alternateDirectoryName)
+	err = os.Remove(alternateRobotSymlinkPath)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	className := lessonClassName
+	if job.Lesson.AlternateRobotPath != "" {
+		alternateRobotDir, alternateRobotFileName := filepath.Split(job.Lesson.AlternateRobotPath)
+		err = os.Symlink(alternateRobotDir, alternateRobotSymlinkPath)
+		if err != nil {
+			return err
+		}
+		className = alternateDirectoryName + "." + strings.TrimSuffix(alternateRobotFileName, config.LessonFileSuffix)
+	}
+
 	taskName := deployTaskName
 	if t.Name == dryRunTargetName {
 		taskName = dryRunTaskName
@@ -124,8 +141,8 @@ func (t *DeployTarget) RunCurrentJob() error {
 	}
 	cmd := exec.Command(path,
 		taskName,
-		"-PtargetAddress="+t.Address,
-		"-PclassName="+lessonClassName,
+		"-PtargetAddress=\""+t.Address+"\"",
+		"-PclassName=\""+className+"\"",
 		"--console=plain",
 	)
 	cmd.Dir = config.BuildDirectory
@@ -135,6 +152,11 @@ func (t *DeployTarget) RunCurrentJob() error {
 		return err
 	}
 	go job.updateBuildOutputFromReader(stdall)
+
+	// If we change the base class name we have to run a clean task
+	cleanCmd := exec.Command(path, cleanTaskName, "-PtargetAddress=''", "-PclassName=''")
+	cleanCmd.Dir = config.BuildDirectory
+	err = cleanCmd.Run()
 
 	err = cmd.Run()
 

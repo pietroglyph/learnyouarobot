@@ -30,7 +30,8 @@ const (
 
 	loginCookieName = "login"
 
-	srcSubDirectory = "src/main/java/com/spartronics4915/learnyouarobot"
+	srcSubDirectory        = "src/main/java/com/spartronics4915/learnyouarobot"
+	alternateDirectoryName = "alternate"
 
 	deployTargetConfigHeading = "DeployTarget"
 	lessonConfigHeading       = "Lesson"
@@ -39,6 +40,7 @@ const (
 
 	dryRunTaskName = "build"
 	deployTaskName = "deploy"
+	cleanTaskName  = "clean"
 
 	websocketReadTimeout = 4 * time.Second
 
@@ -140,8 +142,9 @@ func loadStockLessons() {
 	}
 
 	type basicLessonInfo struct {
-		Name string
-		Path string
+		Name               string
+		Path               string
+		AlternateRobotPath string
 	}
 
 	var rawValues map[string][]basicLessonInfo
@@ -159,7 +162,18 @@ func loadStockLessons() {
 		}
 		lesson.Modified = false
 
+		if lessonInfo.AlternateRobotPath != "" {
+			lessonInfo.AlternateRobotPath, err = filepath.Abs(lessonInfo.AlternateRobotPath)
+			if err != nil {
+				log.Panicln(err)
+			}
+			lesson.AlternateRobotPath = lessonInfo.AlternateRobotPath
+		}
+
 		_, fileName := filepath.Split(lesson.Path)
+		if _, ok := stockLessons[fileName]; ok {
+			log.Panicln("Lesson with file name", fileName, "already exists! Lessons must have unique file names.")
+		}
 		stockLessons[fileName] = lesson
 	}
 	log.Println("Loaded", len(stockLessons), "stock lessons.")

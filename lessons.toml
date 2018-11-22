@@ -1,3 +1,8 @@
 [[Lesson]]
 Name="Example Lesson"
 Path="./lessons/example.java"
+
+[[Lesson]]
+Name="Alternate Robot Example Lesson"
+Path="./lessons/altrobot/altexample.java" # Lessons must have different filenames!
+AlternateRobotPath="./lessons/altrobot/robot/Robot.java"
