@@ -163,11 +163,10 @@ func loadStockLessons() {
 		lesson.Modified = false
 
 		if lessonInfo.AlternateRobotPath != "" {
-			lessonInfo.AlternateRobotPath, err = filepath.Abs(lessonInfo.AlternateRobotPath)
+			lesson.AlternateRobotPath, err = filepath.Abs(filepath.Join(filepath.Dir(config.LessonConfigPath), lessonInfo.AlternateRobotPath))
 			if err != nil {
 				log.Panicln(err)
 			}
-			lesson.AlternateRobotPath = lessonInfo.AlternateRobotPath
 		}
 
 		_, fileName := filepath.Split(lesson.Path)

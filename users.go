@@ -118,7 +118,7 @@ func (u *User) LessonSlice() ([]*Lesson, error) {
 	return u.lessons.Slice(), nil
 }
 
-// lessons gets all the user's Lessons -- modified or not.
+// updateLessons loads all of the lessons modified by the user into the user's lessons array
 func (u *User) updateLessons() error {
 	// Server must be restarted to read new lessons
 	if len(u.lessons) > 0 {
@@ -161,8 +161,6 @@ func (u *User) updateLessons() error {
 		u.lessons[fileName] = lesson
 	}
 
-	// We return a copy of u.lessons, so we don't worry about data races on map access,
-	// just data races on the underlying *Lesson.
 	return nil
 }
 

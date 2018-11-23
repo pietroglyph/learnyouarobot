@@ -127,6 +127,7 @@ func (t *DeployTarget) RunCurrentJob() error {
 		if err != nil {
 			return err
 		}
+
 		className = alternateDirectoryName + "." + strings.TrimSuffix(alternateRobotFileName, config.LessonFileSuffix)
 	}
 
