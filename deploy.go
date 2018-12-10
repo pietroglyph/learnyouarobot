@@ -158,6 +158,9 @@ func (t *DeployTarget) RunCurrentJob() error {
 	cleanCmd := exec.Command(path, cleanTaskName, "-PtargetAddress=''", "-PclassName=''")
 	cleanCmd.Dir = config.BuildDirectory
 	err = cleanCmd.Run()
+	if err != nil {
+		return err
+	}
 
 	err = cmd.Run()
 
