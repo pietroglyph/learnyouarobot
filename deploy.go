@@ -154,10 +154,9 @@ func (t *DeployTarget) RunCurrentJob() error {
 	}
 	go job.updateBuildOutputFromReader(stdall)
 
-	// If we change the base class name we have to run a clean task
-	cleanCmd := exec.Command(path, cleanTaskName, "-PtargetAddress=''", "-PclassName=''")
-	cleanCmd.Dir = config.BuildDirectory
-	err = cleanCmd.Run()
+	// This is the much faster equivalent to a "gradlew clean". We need it because
+	// the build fails if you switch main class files without cleaning.
+	err = os.RemoveAll(filepath.Join(config.BuildDirectory, "build"))
 	if err != nil {
 		return err
 	}
