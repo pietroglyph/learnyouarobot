@@ -34,11 +34,7 @@ export default class API {
         data.append("lesson", lessonName);
         data.append("code", code);
 
-        return fetch(String(url), {
-            method: "POST",
-            body: data,
-            credentials: "same-origin"
-        }).then(this.handle);
+        return fetch(String(url), this.makePOSTOptions(data)).then(this.handle);
     }
 
     deploy(target: string, lessonName: string): HeartbeatingWebSocket {
@@ -62,10 +58,12 @@ export default class API {
     cancelDeploy(target: string, jobID: string): Promise<Response> {
         let url = new URL(this.baseURL);
         url.pathname += "lesson/deploy/cancel";
-        url.searchParams.set("target", target);
-        url.searchParams.set("jobid", jobID);
 
-        return fetch(String(url), defaultOptions).then(this.handle);
+        let data = new FormData();
+        data.append("target", target);
+        data.append("jobid", jobID);
+
+        return fetch(String(url), this.makePOSTOptions(data)).then(this.handle);
     }
 
     getDeployTargets(): Promise<{ Name: string, Address: string }[]> {
@@ -98,6 +96,14 @@ export default class API {
 
     toText(response: Response): Promise<string> {
         return response.text();
+    }
+
+    makePOSTOptions(data: FormData): RequestInit {
+        return {
+            method: "POST",
+            body: data,
+            credentials: "same-origin"
+        }
     }
 }
 

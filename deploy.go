@@ -142,8 +142,8 @@ func (t *DeployTarget) RunCurrentJob() error {
 	}
 	cmd := exec.Command(path,
 		taskName,
-		"-PtargetAddress=\""+t.Address+"\"",
-		"-PclassName=\""+className+"\"",
+		"-PtargetAddress="+t.Address,
+		"-PclassName="+className,
 		"--console=plain",
 	)
 	cmd.Dir = config.BuildDirectory

@@ -34,10 +34,11 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.SetCookie(w, &http.Cookie{
-		Name:    loginCookieName,
-		Value:   name,
-		Path:    "/",
-		Expires: time.Now().AddDate(0, 1, 0), // One month from now
+		Name:     loginCookieName,
+		Value:    name,
+		Path:     "/",
+		SameSite: http.SameSiteStrictMode,     // Mitigate CSRF on modern browsers
+		Expires:  time.Now().AddDate(0, 1, 0), // One month from now
 	})
 
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
@@ -215,15 +216,15 @@ func handleDeployLesson(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleCancelDeploy(w http.ResponseWriter, r *http.Request) {
-	targetName := r.URL.Query().Get("target")
+	targetName := r.FormValue("target")
 	if targetName == "" {
-		http.Error(w, "'target' query parameter cannot be missing or empty", http.StatusBadRequest)
+		http.Error(w, "'target' form value cannot be missing or empty", http.StatusBadRequest)
 		return
 	}
 
-	jobIDString := r.URL.Query().Get("jobid")
+	jobIDString := r.FormValue("jobid")
 	if jobIDString == "" {
-		http.Error(w, "'jobid' query parameter cannot be missing or empty", http.StatusBadRequest)
+		http.Error(w, "'jobid' form value cannot be missing or empty", http.StatusBadRequest)
 		return
 	}
 
