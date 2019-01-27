@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -169,10 +168,6 @@ func handleDeployLesson(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeMux := sync.Mutex{}
-	writeMux.Lock()
-	defer writeMux.Unlock()
-
 	err = conn.WriteMessage(websocket.TextMessage, []byte(job.ID.String()))
 	if err != nil {
 		return
@@ -183,9 +178,7 @@ func handleDeployLesson(w http.ResponseWriter, r *http.Request) {
 		ticker := time.NewTicker(websocketReadTimeout / 4)
 		defer func() {
 			// Wait for all output to be sent before closing the connection
-			writeMux.Lock()
 			conn.Close()
-			writeMux.Unlock()
 		}()
 
 		for {
@@ -197,7 +190,8 @@ func handleDeployLesson(w http.ResponseWriter, r *http.Request) {
 				return
 			default:
 			}
-			_, _, err = conn.ReadMessage()
+			// err is intentionally shadowed, otherwise we have a data race on err
+			_, _, err := conn.ReadMessage()
 			if err != nil {
 				// Returns an error if the job has ended, but we can safely ignore it
 				_ = target.Jobs.RemoveJob(job.ID)
@@ -306,7 +300,8 @@ func handleGetRobotLog(w http.ResponseWriter, r *http.Request) {
 		for {
 			<-ticker.C
 
-			_, _, err = conn.ReadMessage()
+			// Shadowing is intentional, otherwise we have a data race on err
+			_, _, err := conn.ReadMessage()
 			if err != nil {
 				return
 			}
