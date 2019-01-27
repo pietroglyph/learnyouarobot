@@ -16,20 +16,21 @@
       <hr style="margin: 0px;">
       <ul id="lessons">
       </ul>
-      <button id="openOutputButton">Open Output Panel</button>
+      <button id="openOutputButton" autocomplete=off>Open Output Panel</button>
     </div>
     <div class="editorColumn">
       <div class="buttonRow">
-        <button id="toggleRunButton" class="start" disabled>Run</button>
-        <button id="switchRobotButton">Switch Robot</button>
+        <button id="toggleRunButton" class="start" disabled autocomplete=off>Run</button>
+        <button id="switchRobotButton" autocomplete=off>Switch Robot</button>
       </div>
       <div id="editor"></div>
     </div>
     <div id="outputPopup" class="hidden">
       <div class="heading">
-        <button id="showBuildOutputButton" class="selected">Build Output</button>
-        <button id="showLogOutputButton" disabled>Log Output</button>
-        <button id="closeOutputButton">Close</button>
+        <button id="showBuildOutputButton" class="selected" autocomplete=off>Build Output</button>
+        <button id="showLogOutputButton" disabled autocomplete=off>Log Output</button>
+        <button id="clearOutputButton" autocomplete=off>Clear</button>
+        <button id="closeOutputButton" autocomplete="off">Close</button>
       </div>
       <div id="buildOutput" class="outputWell">
       </div>
@@ -40,7 +41,7 @@
   <div id="switcherPopup" class="hidden">
     <div class="headingContainer">
       <h2 class="heading">Select a robot to deploy to:</h2>
-      <button id="closeSwitcherButton">Close</button>
+      <button id="closeSwitcherButton" autocomplete=off>Close</button>
     </div>
     <ul id="deployTargets">
     </ul>

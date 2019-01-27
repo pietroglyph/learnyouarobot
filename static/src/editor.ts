@@ -196,7 +196,10 @@ document.addEventListener("DOMContentLoaded", () => {
       currentLogSocket = api.getLogWebsocket(currentTargetName);
       currentLogSocket.onmessage = (messageEvent: MessageEvent) => {
         let shouldStick = isBottomScrolled(logOutputWell);
-        if (logOutputWell !== null) logOutputWell.innerText += messageEvent.data + "\n"; 
+        if (logOutputWell !== null) {
+          logOutputWell.innerText += messageEvent.data;
+          logOutputWell.innerHTML += "<br>";
+        }
         if (shouldStick) keepSticky(logOutputWell);
       }
       currentLogSocket.onerror = () => showErrorPopup(new Error("Log websocket error."))
@@ -216,6 +219,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Open and close the output pane
   safeQuerySelector("#closeOutputButton").onclick = () => outputPopup.classList.add("hidden");
+  safeQuerySelector("#clearOutputButton").onclick = () => {
+    if (!buildOutputWell.classList.contains("hidden"))
+      buildOutputWell.innerText = "";
+    else if (!logOutputWell.classList.contains("hidden"))
+      logOutputWell.innerText = "";
+  }
   safeQuerySelector("#openOutputButton").onclick = () => outputPopup.classList.remove("hidden");
 
   // Open and close the target switcher
